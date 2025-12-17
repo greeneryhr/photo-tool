@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>青苗琴行 - 智能排版系統</title>
+    
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📷</text></svg>">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#4caf50">
+
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", Roboto, sans-serif;
+            background-color: #f0f7f4;
+            display: flex; flex-direction: column; align-items: center;
+            padding: 15px; margin: 0; color: #333;
+            overscroll-behavior: none; /* 防止下拉更新 */
+        }
+        h2 { margin: 15px 0; font-size: 1.4rem; color: #2e7d32; text-align: center; font-weight: bold; }
+        
+        .controls {
+            background: white; padding: 20px; border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06); width: 100%; max-width: 600px;
+            margin-bottom: 20px; border-top: 4px solid #4caf50;
+        }
+        
+        .input-group { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #f0f0f0; }
+        .input-group:last-child { border: none; padding-bottom: 0; margin-bottom: 0; }
+        
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #444; }
+        input[type="file"] {
+            width: 100%; padding: 10px; border: 2px dashed #a5d6a7;
+            border-radius: 8px; background: #f9fdfa; outline: none;
+        }
+
+        .canvas-container {
+            position: relative; width: 100%; max-width: 600px; margin-bottom: 20px;
+            display: flex; justify-content: center; background: #e8f5e9; padding: 10px;
+            border-radius: 8px; border: 1px solid #c8e6c9;
+        }
+
+        canvas {
+            width: 100% !important; height: auto !important; background: white;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15); touch-action: none; cursor: grab;
+        }
+        canvas:active { cursor: grabbing; }
+
+        .hint-overlay { text-align: center; font-size: 0.9rem; color: #2e7d32; margin-bottom: 5px; font-weight: bold; }
+
+        /* 按鈕群組 */
+        .action-area { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 10px; }
+
+        .btn-main {
+            background-color: #4caf50; color: white; border: none; padding: 16px;
+            font-size: 18px; font-weight: bold; border-radius: 12px; cursor: pointer;
+            width: 100%; text-align: center; box-shadow: 0 4px 6px rgba(76, 175, 80, 0.3);
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-main:active { transform: scale(0.98); background-color: #388e3c; }
+
+        .btn-secondary {
+            background-color: #fff; color: #666; border: 1px solid #ddd; padding: 12px;
+            font-size: 14px; border-radius: 12px; cursor: pointer; width: 100%;
+        }
+
+        /* 彈出視窗 (Modal) */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85); z-index: 1000;
+            justify-content: center; align-items: center; flex-direction: column; padding: 20px;
+        }
+        .modal-content {
+            background: white; padding: 15px; border-radius: 12px;
+            max-width: 90%; max-height: 80%; overflow: auto; text-align: center;
+        }
+        .modal-content img { width: 100%; height: auto; border: 1px solid #ddd; display: block; }
+        .btn-close { margin-top: 15px; background: #666; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <h2>青苗琴行 - 智能排版系統</h2>
+
+    <div class="controls">
+        <div class="input-group">
+            <label>📷 上方照片:</label>
+            <input type="file" id="upload1" accept="image/*">
+        </div>
+        <div class="input-group">
+            <label>📷 下方照片:</label>
+            <input type="file" id="upload2" accept="image/*">
+        </div>
+    </div>
+
+    <div class="hint-overlay">👆 可直接拖曳照片調整位置</div>
+
+    <div class="canvas-container">
+        <canvas id="photoCanvas"></canvas>
+    </div>
+
+    <div class="action-area">
+        <button class="btn-main" onclick="shareOrSave()">
+            <span>📤</span> 儲存 / 分享圖片
+        </button>
+        <button class="btn-secondary" onclick="openPreviewModal()">
+            備用：傳統下載模式
+        </button>
+    </div>
+
+    <div id="downloadModal" class="modal-overlay">
+        <div class="modal-content">
+            <p style="color:#333; margin-bottom:10px;">請長按下方圖片儲存</p>
+            <img id="finalImage" src="">
+            <button class="btn-close" onclick="closeModal()">關閉</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('photoCanvas');
+        const ctx = canvas.getContext('2d');
+        const DPI = 300; const MM_TO_INCH = 0.0393701;
+        
+        canvas.width = Math.round(100 * MM_TO_INCH * DPI);
+        canvas.height = Math.round(148 * MM_TO_INCH * DPI);
+
+        const state = {
+            img1: { obj: new Image(), loaded: false, x: 0, y: 0, scale: 1, minX:0, maxX:0, minY:0, maxY:0 },
+            img2: { obj: new Image(), loaded: false, x: 0, y: 0, scale: 1, minX:0, maxX:0, minY:0, maxY:0 },
+            dragging: null, lastX: 0, lastY: 0
+        };
+
+        function getLayout() {
+            const pW = 88.9 * MM_TO_INCH * DPI;
+            const pH = 63.5 * MM_TO_INCH * DPI;
+            const marginX = (canvas.width - pW) / 2;
+            const y1 = (canvas.height / 2 - pH) / 2 + 20; 
+            const y2 = (canvas.height / 2) + (canvas.height / 2 - pH) / 2 - 20;
+            return { pW, pH, marginX, y1, y2 };
+        }
+
+        function initImageState(key) {
+            const s = state[key];
+            const layout = getLayout();
+            const imgRatio = s.obj.width / s.obj.height;
+            const frameRatio = layout.pW / layout.pH;
+            s.scale = (imgRatio > frameRatio) ? (layout.pH / s.obj.height) : (layout.pW / s.obj.width);
+            s.minX = layout.pW - (s.obj.width * s.scale); s.maxX = 0;
+            s.minY = layout.pH - (s.obj.height * s.scale); s.maxY = 0;
+            s.x = (s.minX + s.maxX) / 2; s.y = (s.minY + s.maxY) / 2;
+            draw();
+        }
+
+        function draw() {
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            const layout = getLayout();
+            if (state.img1.loaded) drawImageClipped(state.img1, layout.marginX, layout.y1, layout.pW, layout.pH);
+            if (state.img2.loaded) drawImageClipped(state.img2, layout.marginX, layout.y2, layout.pW, layout.pH);
+            ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 4;
+            ctx.strokeRect(layout.marginX, layout.y1, layout.pW, layout.pH);
+            ctx.strokeRect(layout.marginX, layout.y2, layout.pW, layout.pH);
+        }
+
+        function drawImageClipped(s, fx, fy, fw, fh) {
+            ctx.save(); ctx.beginPath(); ctx.rect(fx, fy, fw, fh); ctx.clip();
+            ctx.drawImage(s.obj, fx + s.x, fy + s.y, s.obj.width * s.scale, s.obj.height * s.scale);
+            ctx.restore();
+        }
+
+        function handleStart(x, y) {
+            const layout = getLayout();
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const realX = (x - rect.left) * scaleX;
+            const realY = (y - rect.top) * (canvas.height / rect.height);
+            const in1 = (realX>=layout.marginX && realX<=layout.marginX+layout.pW && realY>=layout.y1 && realY<=layout.y1+layout.pH);
+            const in2 = (realX>=layout.marginX && realX<=layout.marginX+layout.pW && realY>=layout.y2 && realY<=layout.y2+layout.pH);
+            if (in1 && state.img1.loaded) state.dragging = 'img1';
+            else if (in2 && state.img2.loaded) state.dragging = 'img2';
+            else state.dragging = null;
+            if (state.dragging) { state.lastX = x; state.lastY = y; }
+        }
+        function handleMove(x, y) {
+            if (!state.dragging) return;
+            const dx = x - state.lastX; const dy = y - state.lastY;
+            const s = state[state.dragging];
+            const scale = canvas.width / canvas.getBoundingClientRect().width;
+            s.x += dx * scale; s.y += dy * scale;
+            if (s.x > s.maxX) s.x = s.maxX; if (s.x < s.minX) s.x = s.minX;
+            if (s.y > s.maxY) s.y = s.maxY; if (s.y < s.minY) s.y = s.minY;
+            state.lastX = x; state.lastY = y; draw();
+        }
+        function handleEnd() { state.dragging = null; }
+
+        canvas.addEventListener('mousedown', e => handleStart(e.clientX, e.clientY));
+        window.addEventListener('mousemove', e => handleMove(e.clientX, e.clientY));
+        window.addEventListener('mouseup', handleEnd);
+        canvas.addEventListener('touchstart', e => { e.preventDefault(); const t = e.touches[0]; handleStart(t.clientX, t.clientY); }, {passive: false});
+        canvas.addEventListener('touchmove', e => { e.preventDefault(); const t = e.touches[0]; handleMove(t.clientX, t.clientY); }, {passive: false});
+        canvas.addEventListener('touchend', handleEnd);
+
+        function handleFile(e, key) {
+            const file = e.target.files[0];
+            if(file){
+                const reader = new FileReader();
+                reader.onload = e => { state[key].obj.src = e.target.result; state[key].obj.onload = () => { state[key].loaded = true; initImageState(key); }};
+                reader.readAsDataURL(file);
+            }
+        }
+        document.getElementById('upload1').addEventListener('change', e => handleFile(e, 'img1'));
+        document.getElementById('upload2').addEventListener('change', e => handleFile(e, 'img2'));
+
+        async function shareOrSave() {
+            if (!state.img1.loaded && !state.img2.loaded) { alert("請先上傳照片！"); return; }
+            
+            // 優先嘗試使用系統分享 (Web Share API)
+            if (navigator.share && navigator.canShare) {
+                 canvas.toBlob(async (blob) => {
+                    const file = new File([blob], "Greenery_Photo.jpg", { type: "image/jpeg" });
+                    try {
+                        if (navigator.canShare({ files: [file] })) {
+                            await navigator.share({
+                                files: [file],
+                                title: '青苗琴行照片',
+                                text: '照片排版完成'
+                            });
+                            return; // 成功則結束
+                        }
+                    } catch (error) {
+                        console.log("Share API skipped or failed, fallback to modal.");
+                    }
+                    // 如果 Share 失敗 (使用者取消或不支援)，執行下面的備用方案
+                    openPreviewModal(); 
+                }, 'image/jpeg', 0.95);
+            } else {
+                // 電腦或舊手機不支援 Share API，直接用備用方案
+                openPreviewModal();
+            }
+        }
+
+        function openPreviewModal() {
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+            document.getElementById('finalImage').src = dataUrl;
+            document.getElementById('downloadModal').style.display = 'flex';
+        }
+        function closeModal() { document.getElementById('downloadModal').style.display = 'none'; }
+        
+        draw();
+    </script>
+</body>
+</html>
