@@ -23,13 +23,15 @@
         
         /* 模式切換按鈕區 */
         .mode-switch {
-            display: flex; background: #e0e0e0; border-radius: 10px; p-adding: 4px;
+            display: flex; gap: 5px;
+            background: #e0e0e0; border-radius: 10px; padding: 4px;
             margin-bottom: 20px; width: 100%; max-width: 600px;
         }
         .mode-btn {
-            flex: 1; padding: 12px; text-align: center; cursor: pointer;
+            flex: 1; padding: 12px 5px; text-align: center; cursor: pointer;
             border-radius: 8px; font-weight: bold; color: #666; transition: 0.2s;
-            border: 2px solid transparent;
+            border: 2px solid transparent; font-size: 14px;
+            white-space: nowrap;
         }
         .mode-btn.active {
             background: #fff; color: #2e7d32; border-color: #4caf50; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
@@ -43,7 +45,6 @@
         
         .input-group { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #f0f0f0; }
         .input-group:last-child { border: none; padding-bottom: 0; margin-bottom: 0; }
-        /* 用於隱藏第二個輸入框 */
         .hidden { display: none !important; }
         
         label { display: block; margin-bottom: 8px; font-weight: 600; color: #444; }
@@ -59,7 +60,9 @@
         }
 
         canvas {
-            width: 100% !important; height: auto !important; background: white;
+            /* 讓 Canvas 在手機上寬度 100%，高度自動 (保持比例) */
+            width: 100% !important; height: auto !important; 
+            background: white;
             box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
             cursor: grab;
         }
@@ -100,8 +103,9 @@
     <h2>青苗琴行 - 相片打印機 排版系統</h2>
 
     <div class="mode-switch">
-        <div class="mode-btn active" id="btn-2r" onclick="setMode('2R')">2R (相框用/兩張)</div>
-        <div class="mode-btn" id="btn-3r" onclick="setMode('3R')">3R (單張)</div>
+        <div class="mode-btn active" id="btn-2r" onclick="setMode('2R')">2R (相框/雙張)</div>
+        <div class="mode-btn" id="btn-3r-v" onclick="setMode('3R_V')">3R (直向)</div>
+        <div class="mode-btn" id="btn-3r-h" onclick="setMode('3R_H')">3R (橫向)</div>
     </div>
 
     <div class="controls">
@@ -142,61 +146,79 @@
         const canvas = document.getElementById('photoCanvas');
         const ctx = canvas.getContext('2d');
         
-        // 常數設定
         const DPI = 300; 
         const MM_TO_INCH = 0.0393701;
         
-        // 畫布固定為明信片大小 100x148mm
-        const CANVAS_WIDTH_MM = 100;
-        const CANVAS_HEIGHT_MM = 148;
+        // 畫布基礎尺寸 (直向標準)
+        const BASE_WIDTH_MM = 100;
+        const BASE_HEIGHT_MM = 148;
         
-        // 初始化畫布尺寸
-        canvas.width = Math.round(CANVAS_WIDTH_MM * MM_TO_INCH * DPI);
-        canvas.height = Math.round(CANVAS_HEIGHT_MM * MM_TO_INCH * DPI);
+        // 像素尺寸
+        const PIXEL_W = Math.round(BASE_WIDTH_MM * MM_TO_INCH * DPI);
+        const PIXEL_H = Math.round(BASE_HEIGHT_MM * MM_TO_INCH * DPI);
 
         // 狀態管理
-        let currentMode = '2R'; // 預設 2R
+        let currentMode = '2R'; // 2R, 3R_V, 3R_H
+        
         const state = {
             img1: { obj: new Image(), loaded: false, x: 0, y: 0, scale: 1, minX:0, maxX:0, minY:0, maxY:0 },
             img2: { obj: new Image(), loaded: false, x: 0, y: 0, scale: 1, minX:0, maxX:0, minY:0, maxY:0 },
             dragging: null, lastX: 0, lastY: 0
         };
 
-        // 切換模式函數
+        // 初始設定
+        canvas.width = PIXEL_W;
+        canvas.height = PIXEL_H;
+
         function setMode(mode) {
             currentMode = mode;
             
             // 更新按鈕樣式
-            document.getElementById('btn-2r').className = mode === '2R' ? 'mode-btn active' : 'mode-btn';
-            document.getElementById('btn-3r').className = mode === '3R' ? 'mode-btn active' : 'mode-btn';
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            if(mode === '2R') document.getElementById('btn-2r').classList.add('active');
+            if(mode === '3R_V') document.getElementById('btn-3r-v').classList.add('active');
+            if(mode === '3R_H') document.getElementById('btn-3r-h').classList.add('active');
             
-            // 更新輸入框顯示
+            // 更新 UI 與 畫布方向
             const group2 = document.getElementById('group2');
             const label1 = document.getElementById('label1');
             
-            if (mode === '3R') {
-                group2.classList.add('hidden'); // 隱藏第二張上傳
-                label1.innerText = "📷 3R 照片:";
-            } else {
-                group2.classList.remove('hidden'); // 顯示第二張上傳
+            if (mode === '2R') {
+                canvas.width = PIXEL_W;
+                canvas.height = PIXEL_H;
+                group2.classList.remove('hidden');
                 label1.innerText = "📷 上方照片:";
+            } else if (mode === '3R_V') {
+                canvas.width = PIXEL_W;
+                canvas.height = PIXEL_H; // 直向畫布
+                group2.classList.add('hidden');
+                label1.innerText = "📷 3R 直向照片:";
+            } else if (mode === '3R_H') {
+                canvas.width = PIXEL_H;  // 橫向畫布 (寬高互換)
+                canvas.height = PIXEL_W;
+                group2.classList.add('hidden');
+                label1.innerText = "📷 3R 橫向照片:";
             }
 
-            // 切換後重新計算位置並重繪 (如果有已上傳的照片)
+            // 重新計算圖片位置
             if (state.img1.loaded) initImageState('img1');
             if (state.img2.loaded && mode === '2R') initImageState('img2');
+            
             draw();
         }
 
-        // 取得目前的版面配置 (核心邏輯)
         function getLayout() {
+            // 根據當前 Canvas 尺寸來決定中心點
+            const cW = canvas.width;
+            const cH = canvas.height;
+
             if (currentMode === '2R') {
-                // 2R 配置 (兩張橫放)
-                const pW = 88.9 * MM_TO_INCH * DPI; // 3.5 inch
-                const pH = 63.5 * MM_TO_INCH * DPI; // 2.5 inch
-                const marginX = (canvas.width - pW) / 2;
-                const y1 = (canvas.height / 2 - pH) / 2 + 20; 
-                const y2 = (canvas.height / 2) + (canvas.height / 2 - pH) / 2 - 20;
+                // 2R (兩張 3.5x2.5 inch)
+                const pW = 88.9 * MM_TO_INCH * DPI; 
+                const pH = 63.5 * MM_TO_INCH * DPI;
+                const marginX = (cW - pW) / 2;
+                const y1 = (cH / 2 - pH) / 2 + 20; 
+                const y2 = (cH / 2) + (cH / 2 - pH) / 2 - 20;
                 
                 return {
                     slots: [
@@ -204,20 +226,25 @@
                         { key: 'img2', x: marginX, y: y2, w: pW, h: pH }
                     ]
                 };
-            } else {
-                // 3R 配置 (單張直放 3.5x5 inch)
-                // 3R 尺寸: 89mm x 127mm
+            } else if (currentMode === '3R_V') {
+                // 3R 直向 (3.5x5 inch) -> 89x127mm
                 const pW = 89 * MM_TO_INCH * DPI; 
                 const pH = 127 * MM_TO_INCH * DPI; 
-                
-                // 絕對置中
-                const x = (canvas.width - pW) / 2;
-                const y = (canvas.height - pH) / 2;
+                const x = (cW - pW) / 2;
+                const y = (cH - pH) / 2;
 
                 return {
-                    slots: [
-                        { key: 'img1', x: x, y: y, w: pW, h: pH }
-                    ]
+                    slots: [ { key: 'img1', x: x, y: y, w: pW, h: pH } ]
+                };
+            } else {
+                // 3R 橫向 (5x3.5 inch) -> 127x89mm
+                const pW = 127 * MM_TO_INCH * DPI; 
+                const pH = 89 * MM_TO_INCH * DPI; 
+                const x = (cW - pW) / 2;
+                const y = (cH - pH) / 2;
+
+                return {
+                    slots: [ { key: 'img1', x: x, y: y, w: pW, h: pH } ]
                 };
             }
         }
@@ -225,18 +252,13 @@
         function initImageState(key) {
             const s = state[key];
             const layout = getLayout();
-            // 找到該圖片對應的 slot
             const slot = layout.slots.find(slot => slot.key === key);
-            
-            // 如果在目前的模式下不需要這張圖 (例如 3R 模式下的 img2)，則跳過
             if (!slot) return;
 
             const imgRatio = s.obj.width / s.obj.height;
             const frameRatio = slot.w / slot.h;
             
-            // Cover 邏輯計算
             s.scale = (imgRatio > frameRatio) ? (slot.h / s.obj.height) : (slot.w / s.obj.width);
-            
             s.minX = slot.w - (s.obj.width * s.scale); s.maxX = 0;
             s.minY = slot.h - (s.obj.height * s.scale); s.maxY = 0;
             s.x = (s.minX + s.maxX) / 2; s.y = (s.minY + s.maxY) / 2;
@@ -248,31 +270,34 @@
             ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
             const layout = getLayout();
             
-            // 繪製每一個 Slot
             layout.slots.forEach(slot => {
                 const s = state[slot.key];
                 if (s.loaded) {
                     drawImageClipped(s, slot.x, slot.y, slot.w, slot.h);
                 }
-                
-                // 繪製邊框
                 ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 4;
                 ctx.strokeRect(slot.x, slot.y, slot.w, slot.h);
             });
 
-            // 空白提示
+            // 空白提示文字
             const hasImg1 = state.img1.loaded;
             const hasImg2 = state.img2.loaded;
-            const isEmpty = currentMode === '2R' ? (!hasImg1 && !hasImg2) : (!hasImg1);
+            const ready = currentMode === '2R' ? (hasImg1 || hasImg2) : hasImg1;
 
-            if (isEmpty) {
+            if (!ready) {
                 ctx.fillStyle = '#aaaaaa';
                 ctx.font = 'bold 40px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText('預覽區域', canvas.width/2, canvas.height/2);
+                let txt = '預覽區域';
+                let subTxt = '';
+                if(currentMode === '2R') subTxt = '(2R 模式)';
+                if(currentMode === '3R_V') subTxt = '(3R 直向)';
+                if(currentMode === '3R_H') subTxt = '(3R 橫向)';
+
+                ctx.fillText(txt, canvas.width/2, canvas.height/2);
                 ctx.font = '30px Arial';
-                ctx.fillText(currentMode === '3R' ? '(3R 模式)' : '(2R 模式)', canvas.width/2, canvas.height/2 + 50);
+                ctx.fillText(subTxt, canvas.width/2, canvas.height/2 + 50);
             }
         }
 
@@ -282,17 +307,15 @@
             ctx.restore();
         }
 
-        // --- 觸控邏輯 ---
+        // 觸控邏輯
         function handleStart(x, y) {
             const layout = getLayout();
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
             const realX = (x - rect.left) * scaleX;
-            const realY = (y - rect.top) * (canvas.height / rect.height);
+            const realY = (y - rect.top) * (canvas.height / rect.height); // 注意這裡的 ScaleY 計算
             
             let hitKey = null;
-
-            // 檢查點擊了哪個 Slot
             layout.slots.forEach(slot => {
                 if (realX >= slot.x && realX <= slot.x + slot.w && 
                     realY >= slot.y && realY <= slot.y + slot.h) {
@@ -332,17 +355,15 @@
             if(state.dragging) { e.preventDefault(); handleMove(e, e.clientX, e.clientY); }
         });
         window.addEventListener('mouseup', handleEnd);
-
         canvas.addEventListener('touchstart', e => { 
             const t = e.touches[0]; handleStart(t.clientX, t.clientY); 
         }, {passive: false});
-
         canvas.addEventListener('touchmove', e => { 
             const t = e.touches[0]; handleMove(e, t.clientX, t.clientY); 
         }, {passive: false});
         canvas.addEventListener('touchend', handleEnd);
 
-        // 檔案上傳處理
+        // 檔案上傳
         function handleFile(e, key) {
             const file = e.target.files[0];
             if(file){
@@ -362,7 +383,6 @@
 
         // 分享與下載
         async function shareOrSave() {
-            // 檢查是否有照片 (根據模式)
             const hasImg1 = state.img1.loaded;
             const hasImg2 = state.img2.loaded;
             const ready = currentMode === '2R' ? (hasImg1 || hasImg2) : hasImg1;
@@ -396,7 +416,6 @@
         }
         function closeModal() { document.getElementById('downloadModal').style.display = 'none'; }
         
-        // 初始繪製
         draw();
     </script>
 </body>
