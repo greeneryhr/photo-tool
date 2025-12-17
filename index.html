@@ -17,11 +17,24 @@
             background-color: #f0f7f4;
             display: flex; flex-direction: column; align-items: center;
             padding: 15px; margin: 0; color: #333;
-            /* 允許頁面正常回彈與捲動 */
             overscroll-behavior-y: auto; 
         }
-        h2 { margin: 15px 0; font-size: 1.4rem; color: #2e7d32; text-align: center; font-weight: bold; }
+        h2 { margin: 15px 0 10px 0; font-size: 1.4rem; color: #2e7d32; text-align: center; font-weight: bold; }
         
+        /* 模式切換按鈕區 */
+        .mode-switch {
+            display: flex; background: #e0e0e0; border-radius: 10px; p-adding: 4px;
+            margin-bottom: 20px; width: 100%; max-width: 600px;
+        }
+        .mode-btn {
+            flex: 1; padding: 12px; text-align: center; cursor: pointer;
+            border-radius: 8px; font-weight: bold; color: #666; transition: 0.2s;
+            border: 2px solid transparent;
+        }
+        .mode-btn.active {
+            background: #fff; color: #2e7d32; border-color: #4caf50; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
         .controls {
             background: white; padding: 20px; border-radius: 16px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.06); width: 100%; max-width: 600px;
@@ -30,6 +43,8 @@
         
         .input-group { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #f0f0f0; }
         .input-group:last-child { border: none; padding-bottom: 0; margin-bottom: 0; }
+        /* 用於隱藏第二個輸入框 */
+        .hidden { display: none !important; }
         
         label { display: block; margin-bottom: 8px; font-weight: 600; color: #444; }
         input[type="file"] {
@@ -46,7 +61,6 @@
         canvas {
             width: 100% !important; height: auto !important; background: white;
             box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
-            /* 移除 touch-action: none，改由 JS 動態控制 */
             cursor: grab;
         }
         canvas:active { cursor: grabbing; }
@@ -85,12 +99,17 @@
 
     <h2>青苗琴行 - 相片打印機 排版系統</h2>
 
+    <div class="mode-switch">
+        <div class="mode-btn active" id="btn-2r" onclick="setMode('2R')">2R (兩張)</div>
+        <div class="mode-btn" id="btn-3r" onclick="setMode('3R')">3R (單張)</div>
+    </div>
+
     <div class="controls">
         <div class="input-group">
-            <label>📷 上方照片:</label>
+            <label id="label1">📷 上方照片:</label>
             <input type="file" id="upload1" accept="image/*">
         </div>
-        <div class="input-group">
+        <div class="input-group" id="group2">
             <label>📷 下方照片:</label>
             <input type="file" id="upload2" accept="image/*">
         </div>
@@ -122,35 +141,106 @@
     <script>
         const canvas = document.getElementById('photoCanvas');
         const ctx = canvas.getContext('2d');
-        const DPI = 300; const MM_TO_INCH = 0.0393701;
         
-        canvas.width = Math.round(100 * MM_TO_INCH * DPI);
-        canvas.height = Math.round(148 * MM_TO_INCH * DPI);
+        // 常數設定
+        const DPI = 300; 
+        const MM_TO_INCH = 0.0393701;
+        
+        // 畫布固定為明信片大小 100x148mm
+        const CANVAS_WIDTH_MM = 100;
+        const CANVAS_HEIGHT_MM = 148;
+        
+        // 初始化畫布尺寸
+        canvas.width = Math.round(CANVAS_WIDTH_MM * MM_TO_INCH * DPI);
+        canvas.height = Math.round(CANVAS_HEIGHT_MM * MM_TO_INCH * DPI);
 
+        // 狀態管理
+        let currentMode = '2R'; // 預設 2R
         const state = {
             img1: { obj: new Image(), loaded: false, x: 0, y: 0, scale: 1, minX:0, maxX:0, minY:0, maxY:0 },
             img2: { obj: new Image(), loaded: false, x: 0, y: 0, scale: 1, minX:0, maxX:0, minY:0, maxY:0 },
             dragging: null, lastX: 0, lastY: 0
         };
 
+        // 切換模式函數
+        function setMode(mode) {
+            currentMode = mode;
+            
+            // 更新按鈕樣式
+            document.getElementById('btn-2r').className = mode === '2R' ? 'mode-btn active' : 'mode-btn';
+            document.getElementById('btn-3r').className = mode === '3R' ? 'mode-btn active' : 'mode-btn';
+            
+            // 更新輸入框顯示
+            const group2 = document.getElementById('group2');
+            const label1 = document.getElementById('label1');
+            
+            if (mode === '3R') {
+                group2.classList.add('hidden'); // 隱藏第二張上傳
+                label1.innerText = "📷 3R 照片:";
+            } else {
+                group2.classList.remove('hidden'); // 顯示第二張上傳
+                label1.innerText = "📷 上方照片:";
+            }
+
+            // 切換後重新計算位置並重繪 (如果有已上傳的照片)
+            if (state.img1.loaded) initImageState('img1');
+            if (state.img2.loaded && mode === '2R') initImageState('img2');
+            draw();
+        }
+
+        // 取得目前的版面配置 (核心邏輯)
         function getLayout() {
-            const pW = 88.9 * MM_TO_INCH * DPI;
-            const pH = 63.5 * MM_TO_INCH * DPI;
-            const marginX = (canvas.width - pW) / 2;
-            const y1 = (canvas.height / 2 - pH) / 2 + 20; 
-            const y2 = (canvas.height / 2) + (canvas.height / 2 - pH) / 2 - 20;
-            return { pW, pH, marginX, y1, y2 };
+            if (currentMode === '2R') {
+                // 2R 配置 (兩張橫放)
+                const pW = 88.9 * MM_TO_INCH * DPI; // 3.5 inch
+                const pH = 63.5 * MM_TO_INCH * DPI; // 2.5 inch
+                const marginX = (canvas.width - pW) / 2;
+                const y1 = (canvas.height / 2 - pH) / 2 + 20; 
+                const y2 = (canvas.height / 2) + (canvas.height / 2 - pH) / 2 - 20;
+                
+                return {
+                    slots: [
+                        { key: 'img1', x: marginX, y: y1, w: pW, h: pH },
+                        { key: 'img2', x: marginX, y: y2, w: pW, h: pH }
+                    ]
+                };
+            } else {
+                // 3R 配置 (單張直放 3.5x5 inch)
+                // 3R 尺寸: 89mm x 127mm
+                const pW = 89 * MM_TO_INCH * DPI; 
+                const pH = 127 * MM_TO_INCH * DPI; 
+                
+                // 絕對置中
+                const x = (canvas.width - pW) / 2;
+                const y = (canvas.height - pH) / 2;
+
+                return {
+                    slots: [
+                        { key: 'img1', x: x, y: y, w: pW, h: pH }
+                    ]
+                };
+            }
         }
 
         function initImageState(key) {
             const s = state[key];
             const layout = getLayout();
+            // 找到該圖片對應的 slot
+            const slot = layout.slots.find(slot => slot.key === key);
+            
+            // 如果在目前的模式下不需要這張圖 (例如 3R 模式下的 img2)，則跳過
+            if (!slot) return;
+
             const imgRatio = s.obj.width / s.obj.height;
-            const frameRatio = layout.pW / layout.pH;
-            s.scale = (imgRatio > frameRatio) ? (layout.pH / s.obj.height) : (layout.pW / s.obj.width);
-            s.minX = layout.pW - (s.obj.width * s.scale); s.maxX = 0;
-            s.minY = layout.pH - (s.obj.height * s.scale); s.maxY = 0;
+            const frameRatio = slot.w / slot.h;
+            
+            // Cover 邏輯計算
+            s.scale = (imgRatio > frameRatio) ? (slot.h / s.obj.height) : (slot.w / s.obj.width);
+            
+            s.minX = slot.w - (s.obj.width * s.scale); s.maxX = 0;
+            s.minY = slot.h - (s.obj.height * s.scale); s.maxY = 0;
             s.x = (s.minX + s.maxX) / 2; s.y = (s.minY + s.maxY) / 2;
+            
             draw();
         }
 
@@ -158,24 +248,31 @@
             ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
             const layout = getLayout();
             
-            // 繪製照片
-            if (state.img1.loaded) drawImageClipped(state.img1, layout.marginX, layout.y1, layout.pW, layout.pH);
-            if (state.img2.loaded) drawImageClipped(state.img2, layout.marginX, layout.y2, layout.pW, layout.pH);
-            
-            // 繪製邊框
-            ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 4;
-            ctx.strokeRect(layout.marginX, layout.y1, layout.pW, layout.pH);
-            ctx.strokeRect(layout.marginX, layout.y2, layout.pW, layout.pH);
+            // 繪製每一個 Slot
+            layout.slots.forEach(slot => {
+                const s = state[slot.key];
+                if (s.loaded) {
+                    drawImageClipped(s, slot.x, slot.y, slot.w, slot.h);
+                }
+                
+                // 繪製邊框
+                ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 4;
+                ctx.strokeRect(slot.x, slot.y, slot.w, slot.h);
+            });
 
-            // [新增] 如果完全沒有照片，顯示提示文字，避免看起來像壞掉
-            if (!state.img1.loaded && !state.img2.loaded) {
+            // 空白提示
+            const hasImg1 = state.img1.loaded;
+            const hasImg2 = state.img2.loaded;
+            const isEmpty = currentMode === '2R' ? (!hasImg1 && !hasImg2) : (!hasImg1);
+
+            if (isEmpty) {
                 ctx.fillStyle = '#aaaaaa';
                 ctx.font = 'bold 40px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText('預覽區域', canvas.width/2, canvas.height/2);
                 ctx.font = '30px Arial';
-                ctx.fillText('(請先上傳照片)', canvas.width/2, canvas.height/2 + 50);
+                ctx.fillText(currentMode === '3R' ? '(3R 模式)' : '(2R 模式)', canvas.width/2, canvas.height/2 + 50);
             }
         }
 
@@ -185,7 +282,7 @@
             ctx.restore();
         }
 
-        // --- 修正後的觸控邏輯 ---
+        // --- 觸控邏輯 ---
         function handleStart(x, y) {
             const layout = getLayout();
             const rect = canvas.getBoundingClientRect();
@@ -193,22 +290,27 @@
             const realX = (x - rect.left) * scaleX;
             const realY = (y - rect.top) * (canvas.height / rect.height);
             
-            const in1 = (realX>=layout.marginX && realX<=layout.marginX+layout.pW && realY>=layout.y1 && realY<=layout.y1+layout.pH);
-            const in2 = (realX>=layout.marginX && realX<=layout.marginX+layout.pW && realY>=layout.y2 && realY<=layout.y2+layout.pH);
-            
-            if (in1 && state.img1.loaded) state.dragging = 'img1';
-            else if (in2 && state.img2.loaded) state.dragging = 'img2';
-            else state.dragging = null;
-            
-            if (state.dragging) { state.lastX = x; state.lastY = y; }
+            let hitKey = null;
+
+            // 檢查點擊了哪個 Slot
+            layout.slots.forEach(slot => {
+                if (realX >= slot.x && realX <= slot.x + slot.w && 
+                    realY >= slot.y && realY <= slot.y + slot.h) {
+                    hitKey = slot.key;
+                }
+            });
+
+            if (hitKey && state[hitKey].loaded) {
+                state.dragging = hitKey;
+                state.lastX = x;
+                state.lastY = y;
+            } else {
+                state.dragging = null;
+            }
         }
 
-        // 觸控移動 (關鍵修改)
         function handleMove(e, x, y) {
-            // 如果沒有在拖曳照片，就直接結束，讓瀏覽器處理預設捲動
             if (!state.dragging) return;
-
-            // 如果正在拖曳照片，則禁止瀏覽器捲動
             if (e.cancelable) e.preventDefault();
 
             const dx = x - state.lastX; const dy = y - state.lastY;
@@ -225,45 +327,48 @@
 
         function handleEnd() { state.dragging = null; }
 
-        // 綁定事件
         canvas.addEventListener('mousedown', e => handleStart(e.clientX, e.clientY));
         window.addEventListener('mousemove', e => {
-            if(state.dragging) {
-                // 電腦版滑鼠拖曳通常不會觸發捲動，但為了邏輯一致
-                e.preventDefault(); 
-                handleMove(e, e.clientX, e.clientY);
-            }
+            if(state.dragging) { e.preventDefault(); handleMove(e, e.clientX, e.clientY); }
         });
         window.addEventListener('mouseup', handleEnd);
 
-        // 手機觸控事件
         canvas.addEventListener('touchstart', e => { 
-            // 這裡不 preventDefault，因為我們還不確定用戶是不是想捲動頁面
-            const t = e.touches[0]; 
-            handleStart(t.clientX, t.clientY); 
+            const t = e.touches[0]; handleStart(t.clientX, t.clientY); 
         }, {passive: false});
 
         canvas.addEventListener('touchmove', e => { 
-            // 把 event 物件傳進去，由 handleMove 決定要不要阻止捲動
-            const t = e.touches[0]; 
-            handleMove(e, t.clientX, t.clientY); 
+            const t = e.touches[0]; handleMove(e, t.clientX, t.clientY); 
         }, {passive: false});
-
         canvas.addEventListener('touchend', handleEnd);
 
+        // 檔案上傳處理
         function handleFile(e, key) {
             const file = e.target.files[0];
             if(file){
                 const reader = new FileReader();
-                reader.onload = e => { state[key].obj.src = e.target.result; state[key].obj.onload = () => { state[key].loaded = true; initImageState(key); }};
+                reader.onload = e => { 
+                    state[key].obj.src = e.target.result; 
+                    state[key].obj.onload = () => { 
+                        state[key].loaded = true; 
+                        initImageState(key); 
+                    }
+                };
                 reader.readAsDataURL(file);
             }
         }
         document.getElementById('upload1').addEventListener('change', e => handleFile(e, 'img1'));
         document.getElementById('upload2').addEventListener('change', e => handleFile(e, 'img2'));
 
+        // 分享與下載
         async function shareOrSave() {
-            if (!state.img1.loaded && !state.img2.loaded) { alert("請先上傳照片！"); return; }
+            // 檢查是否有照片 (根據模式)
+            const hasImg1 = state.img1.loaded;
+            const hasImg2 = state.img2.loaded;
+            const ready = currentMode === '2R' ? (hasImg1 || hasImg2) : hasImg1;
+
+            if (!ready) { alert("請先上傳照片！"); return; }
+            
             if (navigator.share && navigator.canShare) {
                  canvas.toBlob(async (blob) => {
                     const file = new File([blob], "Greenery_Photo.jpg", { type: "image/jpeg" });
@@ -291,11 +396,8 @@
         }
         function closeModal() { document.getElementById('downloadModal').style.display = 'none'; }
         
+        // 初始繪製
         draw();
     </script>
 </body>
 </html>
-
-</html>
-
-
