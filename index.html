@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>青苗琴行 - 相片打印機 排版系統</title>
-    
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📷</text></svg>">
     
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -18,7 +17,8 @@
             background-color: #f0f7f4;
             display: flex; flex-direction: column; align-items: center;
             padding: 15px; margin: 0; color: #333;
-            overscroll-behavior: none; /* 防止下拉更新 */
+            /* 允許頁面正常回彈與捲動 */
+            overscroll-behavior-y: auto; 
         }
         h2 { margin: 15px 0; font-size: 1.4rem; color: #2e7d32; text-align: center; font-weight: bold; }
         
@@ -45,14 +45,15 @@
 
         canvas {
             width: 100% !important; height: auto !important; background: white;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15); touch-action: none; cursor: grab;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
+            /* 移除 touch-action: none，改由 JS 動態控制 */
+            cursor: grab;
         }
         canvas:active { cursor: grabbing; }
 
         .hint-overlay { text-align: center; font-size: 0.9rem; color: #2e7d32; margin-bottom: 5px; font-weight: bold; }
 
-        /* 按鈕群組 */
-        .action-area { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 10px; }
+        .action-area { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px; }
 
         .btn-main {
             background-color: #4caf50; color: white; border: none; padding: 16px;
@@ -67,7 +68,6 @@
             font-size: 14px; border-radius: 12px; cursor: pointer; width: 100%;
         }
 
-        /* 彈出視窗 (Modal) */
         .modal-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.85); z-index: 1000;
@@ -96,7 +96,7 @@
         </div>
     </div>
 
-    <div class="hint-overlay">👆 可直接拖曳照片調整位置</div>
+    <div class="hint-overlay">👆 上傳後可拖曳照片調整位置</div>
 
     <div class="canvas-container">
         <canvas id="photoCanvas"></canvas>
@@ -157,11 +157,26 @@
         function draw() {
             ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
             const layout = getLayout();
+            
+            // 繪製照片
             if (state.img1.loaded) drawImageClipped(state.img1, layout.marginX, layout.y1, layout.pW, layout.pH);
             if (state.img2.loaded) drawImageClipped(state.img2, layout.marginX, layout.y2, layout.pW, layout.pH);
+            
+            // 繪製邊框
             ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 4;
             ctx.strokeRect(layout.marginX, layout.y1, layout.pW, layout.pH);
             ctx.strokeRect(layout.marginX, layout.y2, layout.pW, layout.pH);
+
+            // [新增] 如果完全沒有照片，顯示提示文字，避免看起來像壞掉
+            if (!state.img1.loaded && !state.img2.loaded) {
+                ctx.fillStyle = '#aaaaaa';
+                ctx.font = 'bold 40px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('預覽區域', canvas.width/2, canvas.height/2);
+                ctx.font = '30px Arial';
+                ctx.fillText('(請先上傳照片)', canvas.width/2, canvas.height/2 + 50);
+            }
         }
 
         function drawImageClipped(s, fx, fy, fw, fh) {
@@ -170,36 +185,70 @@
             ctx.restore();
         }
 
+        // --- 修正後的觸控邏輯 ---
         function handleStart(x, y) {
             const layout = getLayout();
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
             const realX = (x - rect.left) * scaleX;
             const realY = (y - rect.top) * (canvas.height / rect.height);
+            
             const in1 = (realX>=layout.marginX && realX<=layout.marginX+layout.pW && realY>=layout.y1 && realY<=layout.y1+layout.pH);
             const in2 = (realX>=layout.marginX && realX<=layout.marginX+layout.pW && realY>=layout.y2 && realY<=layout.y2+layout.pH);
+            
             if (in1 && state.img1.loaded) state.dragging = 'img1';
             else if (in2 && state.img2.loaded) state.dragging = 'img2';
             else state.dragging = null;
+            
             if (state.dragging) { state.lastX = x; state.lastY = y; }
         }
-        function handleMove(x, y) {
+
+        // 觸控移動 (關鍵修改)
+        function handleMove(e, x, y) {
+            // 如果沒有在拖曳照片，就直接結束，讓瀏覽器處理預設捲動
             if (!state.dragging) return;
+
+            // 如果正在拖曳照片，則禁止瀏覽器捲動
+            if (e.cancelable) e.preventDefault();
+
             const dx = x - state.lastX; const dy = y - state.lastY;
             const s = state[state.dragging];
             const scale = canvas.width / canvas.getBoundingClientRect().width;
+            
             s.x += dx * scale; s.y += dy * scale;
             if (s.x > s.maxX) s.x = s.maxX; if (s.x < s.minX) s.x = s.minX;
             if (s.y > s.maxY) s.y = s.maxY; if (s.y < s.minY) s.y = s.minY;
-            state.lastX = x; state.lastY = y; draw();
+            
+            state.lastX = x; state.lastY = y; 
+            draw();
         }
+
         function handleEnd() { state.dragging = null; }
 
+        // 綁定事件
         canvas.addEventListener('mousedown', e => handleStart(e.clientX, e.clientY));
-        window.addEventListener('mousemove', e => handleMove(e.clientX, e.clientY));
+        window.addEventListener('mousemove', e => {
+            if(state.dragging) {
+                // 電腦版滑鼠拖曳通常不會觸發捲動，但為了邏輯一致
+                e.preventDefault(); 
+                handleMove(e, e.clientX, e.clientY);
+            }
+        });
         window.addEventListener('mouseup', handleEnd);
-        canvas.addEventListener('touchstart', e => { e.preventDefault(); const t = e.touches[0]; handleStart(t.clientX, t.clientY); }, {passive: false});
-        canvas.addEventListener('touchmove', e => { e.preventDefault(); const t = e.touches[0]; handleMove(t.clientX, t.clientY); }, {passive: false});
+
+        // 手機觸控事件
+        canvas.addEventListener('touchstart', e => { 
+            // 這裡不 preventDefault，因為我們還不確定用戶是不是想捲動頁面
+            const t = e.touches[0]; 
+            handleStart(t.clientX, t.clientY); 
+        }, {passive: false});
+
+        canvas.addEventListener('touchmove', e => { 
+            // 把 event 物件傳進去，由 handleMove 決定要不要阻止捲動
+            const t = e.touches[0]; 
+            handleMove(e, t.clientX, t.clientY); 
+        }, {passive: false});
+
         canvas.addEventListener('touchend', handleEnd);
 
         function handleFile(e, key) {
@@ -215,8 +264,6 @@
 
         async function shareOrSave() {
             if (!state.img1.loaded && !state.img2.loaded) { alert("請先上傳照片！"); return; }
-            
-            // 優先嘗試使用系統分享 (Web Share API)
             if (navigator.share && navigator.canShare) {
                  canvas.toBlob(async (blob) => {
                     const file = new File([blob], "Greenery_Photo.jpg", { type: "image/jpeg" });
@@ -227,16 +274,12 @@
                                 title: '青苗琴行照片',
                                 text: '照片排版完成'
                             });
-                            return; // 成功則結束
+                            return; 
                         }
-                    } catch (error) {
-                        console.log("Share API skipped or failed, fallback to modal.");
-                    }
-                    // 如果 Share 失敗 (使用者取消或不支援)，執行下面的備用方案
+                    } catch (error) { console.log("Share skipped"); }
                     openPreviewModal(); 
                 }, 'image/jpeg', 0.95);
             } else {
-                // 電腦或舊手機不支援 Share API，直接用備用方案
                 openPreviewModal();
             }
         }
@@ -251,6 +294,8 @@
         draw();
     </script>
 </body>
+</html>
 
 </html>
+
 
