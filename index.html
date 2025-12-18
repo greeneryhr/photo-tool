@@ -21,18 +21,13 @@
         }
         h2 { margin: 15px 0 10px 0; font-size: 1.4rem; color: #2e7d32; text-align: center; font-weight: bold; }
         
-        /* 模式切換按鈕區 */
+        /* 模式切換按鈕 */
         .mode-switch {
             display: flex; gap: 8px;
             background: #e0e0e0; border-radius: 10px; padding: 5px;
             margin-bottom: 10px; width: 100%; max-width: 600px;
         }
-        
-        /* 第二層選項 (直/橫) */
-        .sub-switch {
-            margin-top: -5px; margin-bottom: 20px; 
-            background: #dcedc8; /* 淺綠色底區分 */
-        }
+        .sub-switch { margin-top: -5px; margin-bottom: 20px; background: #dcedc8; }
 
         .mode-btn {
             flex: 1; padding: 12px 5px; text-align: center; cursor: pointer;
@@ -53,7 +48,19 @@
         .input-group:last-child { border: none; padding-bottom: 0; margin-bottom: 0; }
         .hidden { display: none !important; }
         
-        label { display: block; margin-bottom: 8px; font-weight: 600; color: #444; }
+        .label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        label { font-weight: 600; color: #444; margin: 0; }
+        
+        /* 相框按鈕 */
+        .btn-frame {
+            background: #f0f0f0; border: 1px solid #ccc; padding: 6px 12px;
+            border-radius: 20px; font-size: 0.85rem; cursor: pointer; color: #555;
+            display: flex; align-items: center; gap: 4px; transition: 0.2s;
+        }
+        .btn-frame.active {
+            background: #fff3cd; border-color: #ffc107; color: #856404; font-weight: bold;
+        }
+
         input[type="file"] {
             width: 100%; padding: 10px; border: 2px dashed #a5d6a7;
             border-radius: 8px; background: #f9fdfa; outline: none;
@@ -67,13 +74,11 @@
 
         canvas {
             width: 100% !important; height: auto !important; background: white;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
-            cursor: grab;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15); cursor: grab;
         }
         canvas:active { cursor: grabbing; }
 
         .hint-overlay { text-align: center; font-size: 0.9rem; color: #2e7d32; margin-bottom: 5px; font-weight: bold; }
-
         .action-area { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px; }
 
         .btn-main {
@@ -83,12 +88,12 @@
             display: flex; align-items: center; justify-content: center; gap: 8px;
         }
         .btn-main:active { transform: scale(0.98); background-color: #388e3c; }
-
         .btn-secondary {
             background-color: #fff; color: #666; border: 1px solid #ddd; padding: 12px;
             font-size: 14px; border-radius: 12px; cursor: pointer; width: 100%;
         }
 
+        /* 彈出視窗 (Modal) */
         .modal-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.85); z-index: 1000;
@@ -96,10 +101,29 @@
         }
         .modal-content {
             background: white; padding: 15px; border-radius: 12px;
-            max-width: 90%; max-height: 80%; overflow: auto; text-align: center;
+            max-width: 90%; max-height: 80%; width: 100%; overflow: auto; text-align: center;
         }
-        .modal-content img { width: 100%; height: auto; border: 1px solid #ddd; display: block; }
+        .modal-content img { width: 100%; height: auto; border: 1px solid #ddd; display: block; margin: 0 auto; }
         .btn-close { margin-top: 15px; background: #666; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; }
+
+        /* 相框選擇器樣式 */
+        .frame-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 10px 0;
+        }
+        .frame-item {
+            border: 2px solid #eee; border-radius: 8px; padding: 5px; cursor: pointer;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .frame-item:hover { border-color: #4caf50; background: #e8f5e9; }
+        .frame-item img {
+            width: 100%; height: auto; object-fit: contain; background: #ccc;
+        }
+        .frame-item span { font-size: 12px; margin-top: 5px; color: #555; }
+        .frame-none {
+            display: flex; align-items: center; justify-content: center; height: 80px;
+            background: #eee; color: #666; font-size: 12px; width: 100%;
+        }
+
     </style>
 </head>
 <body>
@@ -118,11 +142,18 @@
 
     <div class="controls">
         <div class="input-group">
-            <label id="label1">📷 上方照片:</label>
+            <div class="label-row">
+                <label id="label1">📷 上方照片:</label>
+                <button class="btn-frame" id="btn-frame-1" onclick="openFrameSelector('img1')">🖼️ 選擇相框</button>
+            </div>
             <input type="file" id="upload1" accept="image/*">
         </div>
+        
         <div class="input-group" id="group2">
-            <label>📷 下方照片:</label>
+            <div class="label-row">
+                <label id="label2">📷 下方照片:</label>
+                <button class="btn-frame" id="btn-frame-2" onclick="openFrameSelector('img2')">🖼️ 選擇相框</button>
+            </div>
             <input type="file" id="upload2" accept="image/*">
         </div>
     </div>
@@ -134,23 +165,56 @@
     </div>
 
     <div class="action-area">
-        <button class="btn-main" onclick="shareOrSave()">
-            <span>📤</span> 儲存 / 分享圖片
-        </button>
-        <button class="btn-secondary" onclick="openPreviewModal()">
-            備用：傳統下載模式
-        </button>
+        <button class="btn-main" onclick="shareOrSave()"><span>📤</span> 儲存 / 分享圖片</button>
+        <button class="btn-secondary" onclick="openPreviewModal()">備用：傳統下載模式</button>
     </div>
 
     <div id="downloadModal" class="modal-overlay">
         <div class="modal-content">
             <p style="color:#333; margin-bottom:10px;">請長按下方圖片儲存</p>
             <img id="finalImage" src="">
-            <button class="btn-close" onclick="closeModal()">關閉</button>
+            <button class="btn-close" onclick="closeModal('downloadModal')">關閉</button>
+        </div>
+    </div>
+
+    <div id="frameModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px;">
+            <h3 style="margin:0 0 10px 0; color:#2e7d32;">選擇相框</h3>
+            <p id="frame-hint" style="font-size:12px; color:#666;">目前顯示: 2R 直向相框</p>
+            
+            <div id="frame-list" class="frame-grid">
+                </div>
+            
+            <button class="btn-close" onclick="closeModal('frameModal')">取消</button>
         </div>
     </div>
 
     <script>
+        // ==========================================
+        // --- 1. 相框圖書館 (使用者設定區) ---
+        // 請在此設定您的相框
+        // ==========================================
+        const FRAME_LIBRARY = {
+            // 2R 直向
+            r2_portrait: [
+                { name: "青苗 A", url: "https://via.placeholder.com/635x889/4caf50/ffffff?text=Greenery+A" },
+                { name: "青苗 B", url: "https://via.placeholder.com/635x889/ff9800/ffffff?text=Greenery+B" }
+            ],
+            // 2R 橫向
+            r2_landscape: [
+                { name: "橫向 A", url: "https://via.placeholder.com/889x635/2196f3/ffffff?text=Landscape+A" }
+            ],
+            // 3R 直向
+            r3_portrait: [
+                { name: "3R 直 A", url: "https://via.placeholder.com/890x1270/009688/ffffff?text=3R+A" }
+            ],
+            // 3R 橫向
+            r3_landscape: [
+                { name: "3R 橫 A", url: "https://via.placeholder.com/1270x890/673ab7/ffffff?text=3R+A" }
+            ]
+        };
+        // ==========================================
+
         const canvas = document.getElementById('photoCanvas');
         const ctx = canvas.getContext('2d');
         const DPI = 300; 
@@ -161,136 +225,150 @@
         const PIXEL_W = Math.round(BASE_WIDTH_MM * MM_TO_INCH * DPI);
         const PIXEL_H = Math.round(BASE_HEIGHT_MM * MM_TO_INCH * DPI);
 
-        // 狀態變數
-        let currentSize = '2R'; // '2R' or '3R'
-        let currentOri = 'V';   // 'V' or 'H'
+        let currentSize = '2R'; 
+        let currentOri = 'V';   
         
         const state = {
-            img1: { obj: new Image(), loaded: false, x: 0, y: 0, scale: 1, minX:0, maxX:0, minY:0, maxY:0 },
-            img2: { obj: new Image(), loaded: false, x: 0, y: 0, scale: 1, minX:0, maxX:0, minY:0, maxY:0 },
+            img1: { obj: new Image(), loaded: false, x: 0, y: 0, scale: 1, minX:0, maxX:0, minY:0, maxY:0, frameUrl: null },
+            img2: { obj: new Image(), loaded: false, x: 0, y: 0, scale: 1, minX:0, maxX:0, minY:0, maxY:0, frameUrl: null },
             dragging: null, lastX: 0, lastY: 0
         };
 
-        // 初始畫布 (2R 直向 = 橫式畫布)
-        // 初始預設是 2R V，邏輯稍後 updateUI 會處理，先設一個值
+        let activeEditKey = null;
+
         canvas.width = PIXEL_W;
         canvas.height = PIXEL_H;
 
-        // --- 選擇尺寸 ---
-        function selectSize(size) {
-            currentSize = size;
-            updateUI();
+        function selectSize(size) { currentSize = size; updateUI(); }
+        function selectOrientation(ori) { currentOri = ori; updateUI(); }
+
+        // --- 相框選擇邏輯 ---
+        function openFrameSelector(key) {
+            activeEditKey = key;
+            const modal = document.getElementById('frameModal');
+            const listContainer = document.getElementById('frame-list');
+            const hint = document.getElementById('frame-hint');
+            
+            listContainer.innerHTML = ''; 
+
+            let category = '';
+            let catName = '';
+            
+            if (currentSize === '2R') {
+                if (currentOri === 'V') { category = 'r2_portrait'; catName = '2R 直向'; }
+                else { category = 'r2_landscape'; catName = '2R 橫向'; }
+            } else {
+                if (currentOri === 'V') { category = 'r3_portrait'; catName = '3R 直向'; }
+                else { category = 'r3_landscape'; catName = '3R 橫向'; }
+            }
+
+            hint.innerText = `適用於: ${catName}`;
+            const frames = FRAME_LIBRARY[category] || [];
+
+            // 不使用相框選項
+            const noFrameDiv = document.createElement('div');
+            noFrameDiv.className = 'frame-item';
+            noFrameDiv.onclick = () => applyFrame(null);
+            noFrameDiv.innerHTML = `<div class="frame-none">🚫 無相框</div><span>移除</span>`;
+            listContainer.appendChild(noFrameDiv);
+
+            // 產生列表
+            frames.forEach(frame => {
+                const item = document.createElement('div');
+                item.className = 'frame-item';
+                item.onclick = () => applyFrame(frame.url);
+                item.innerHTML = `<img src="${frame.url}"><span>${frame.name}</span>`;
+                listContainer.appendChild(item);
+            });
+
+            modal.style.display = 'flex';
         }
 
-        // --- 選擇方向 ---
-        function selectOrientation(ori) {
-            currentOri = ori;
-            updateUI();
+        function applyFrame(url) {
+            if (activeEditKey) {
+                state[activeEditKey].frameUrl = url;
+                const btn = document.getElementById(activeEditKey === 'img1' ? 'btn-frame-1' : 'btn-frame-2');
+                if (url) {
+                    btn.classList.add('active');
+                    btn.innerHTML = "🖼️ 已選相框";
+                } else {
+                    btn.classList.remove('active');
+                    btn.innerHTML = "🖼️ 選擇相框";
+                }
+                draw();
+            }
+            closeModal('frameModal');
         }
 
-        // --- 更新介面與邏輯核心 ---
         function updateUI() {
-            // 1. 更新尺寸按鈕
             document.getElementById('btn-size-2r').className = currentSize === '2R' ? 'mode-btn active' : 'mode-btn';
             document.getElementById('btn-size-3r').className = currentSize === '3R' ? 'mode-btn active' : 'mode-btn';
             
-            // 2. 更新方向按鈕文字與狀態
             const btnV = document.getElementById('btn-ori-v');
             const btnH = document.getElementById('btn-ori-h');
-            
             btnV.className = currentOri === 'V' ? 'mode-btn active' : 'mode-btn';
             btnH.className = currentOri === 'H' ? 'mode-btn active' : 'mode-btn';
 
-            // 特殊文字邏輯：2R 的橫向要顯示「相框用」
-            if (currentSize === '2R') {
-                btnH.innerText = "橫向 / 相框用 ↔";
-            } else {
-                btnH.innerText = "橫向 ↔"; // 3R 恢復正常
-            }
-
-            // 3. 控制輸入框與畫布邏輯
             const group2 = document.getElementById('group2');
             const label1 = document.getElementById('label1');
+            const label2 = document.getElementById('label2');
 
             if (currentSize === '2R') {
-                // 2R 模式：始終顯示兩個輸入框
+                // *** 這裡修改文字為「橫向/相架用」 ***
+                btnH.innerText = "橫向/相架用 ↔";
                 group2.classList.remove('hidden');
                 
                 if (currentOri === 'V') {
-                    // 2R 直向 (照片直立)：為了放兩張直的，紙張要橫放 (148x100)
-                    canvas.width = PIXEL_H; 
-                    canvas.height = PIXEL_W;
-                    label1.innerText = "📷 左邊照片:";
-                    // 修改 group2 label 需透過 querySelector 或給 id，這裡簡單處理
-                    group2.querySelector('label').innerText = "📷 右邊照片:";
+                    canvas.width = PIXEL_H; canvas.height = PIXEL_W;
+                    label1.innerText = "📷 左邊照片:"; label2.innerText = "📷 右邊照片:";
                 } else {
-                    // 2R 橫向 (照片橫放 - 相框用)：紙張直放 (100x148)
-                    canvas.width = PIXEL_W;
-                    canvas.height = PIXEL_H;
-                    label1.innerText = "📷 上方照片:";
-                    group2.querySelector('label').innerText = "📷 下方照片:";
+                    canvas.width = PIXEL_W; canvas.height = PIXEL_H;
+                    label1.innerText = "📷 上方照片:"; label2.innerText = "📷 下方照片:";
                 }
-
             } else {
-                // 3R 模式：只顯示一個輸入框
+                btnH.innerText = "橫向 ↔";
                 group2.classList.add('hidden');
                 
                 if (currentOri === 'V') {
-                    // 3R 直向：紙張直放 (100x148)
-                    canvas.width = PIXEL_W;
-                    canvas.height = PIXEL_H;
+                    canvas.width = PIXEL_W; canvas.height = PIXEL_H;
                     label1.innerText = "📷 3R 直向照片:";
                 } else {
-                    // 3R 橫向：紙張橫放 (148x100)
-                    canvas.width = PIXEL_H;
-                    canvas.height = PIXEL_W;
+                    canvas.width = PIXEL_H; canvas.height = PIXEL_W;
                     label1.innerText = "📷 3R 橫向照片:";
                 }
             }
 
-            // 4. 重算位置並重繪
             if (state.img1.loaded) initImageState('img1');
             if (state.img2.loaded && currentSize === '2R') initImageState('img2');
-            
             draw();
         }
 
-        // 根據目前的 Size 和 Orientation 產生版面參數
         function getLayout() {
             const cW = canvas.width;
             const cH = canvas.height;
 
             if (currentSize === '2R') {
                 if (currentOri === 'V') {
-                    // 2R 直向 (照片 2.5x3.5 inch, 63.5x88.9mm) x 2張
-                    // 畫布現在是 148x100 (橫向)
-                    const pW = 63.5 * MM_TO_INCH * DPI; // 寬
-                    const pH = 88.9 * MM_TO_INCH * DPI; // 高
-                    
-                    // 左右排列 (置中)
-                    // 兩張總寬度
-                    const totalW = pW * 2;
-                    const marginX = (cW - totalW) / 2; // 最左邊的邊距
-                    const y = (cH - pH) / 2; // 垂直置中
+                    // 2R 直向 (左右) - 間距 10mm
+                    const pW = 63.5 * MM_TO_INCH * DPI; 
+                    const pH = 88.9 * MM_TO_INCH * DPI;
+                    const gap = 10 * MM_TO_INCH * DPI; 
+                    const totalW = (pW * 2) + gap;
+                    const marginX = (cW - totalW) / 2;
+                    const y = (cH - pH) / 2;
 
                     return {
                         slots: [
-                            { key: 'img1', x: marginX, y: y, w: pW, h: pH },       // 左
-                            { key: 'img2', x: marginX + pW, y: y, w: pW, h: pH }   // 右 (緊貼)
+                            { key: 'img1', x: marginX, y: y, w: pW, h: pH },
+                            { key: 'img2', x: marginX + pW + gap, y: y, w: pW, h: pH }
                         ]
                     };
-
                 } else {
-                    // 2R 橫向 (照片 3.5x2.5 inch, 88.9x63.5mm) x 2張 (相框用)
-                    // 畫布現在是 100x148 (直向)
+                    // 2R 橫向 (上下)
                     const pW = 88.9 * MM_TO_INCH * DPI; 
                     const pH = 63.5 * MM_TO_INCH * DPI;
-                    
-                    // 上下排列 (置中)
                     const marginX = (cW - pW) / 2;
-                    // 上方照片位置
                     const y1 = (cH / 2 - pH) / 2 + 20; 
-                    // 下方照片位置
                     const y2 = (cH / 2) + (cH / 2 - pH) / 2 - 20;
                     
                     return {
@@ -301,25 +379,14 @@
                     };
                 }
             } else {
-                // 3R 規格
                 let pW, pH;
-                
                 if (currentOri === 'V') {
-                    // 直向 3.5x5 inch (89x127mm)
-                    pW = 89 * MM_TO_INCH * DPI;
-                    pH = 127 * MM_TO_INCH * DPI;
+                    pW = 89 * MM_TO_INCH * DPI; pH = 127 * MM_TO_INCH * DPI;
                 } else {
-                    // 橫向 5x3.5 inch (127x89mm)
-                    pW = 127 * MM_TO_INCH * DPI;
-                    pH = 89 * MM_TO_INCH * DPI;
+                    pW = 127 * MM_TO_INCH * DPI; pH = 89 * MM_TO_INCH * DPI;
                 }
-                
-                const x = (cW - pW) / 2;
-                const y = (cH - pH) / 2;
-
-                return {
-                    slots: [ { key: 'img1', x: x, y: y, w: pW, h: pH } ]
-                };
+                const x = (cW - pW) / 2; const y = (cH - pH) / 2;
+                return { slots: [ { key: 'img1', x: x, y: y, w: pW, h: pH } ] };
             }
         }
 
@@ -328,15 +395,12 @@
             const layout = getLayout();
             const slot = layout.slots.find(slot => slot.key === key);
             if (!slot) return;
-
             const imgRatio = s.obj.width / s.obj.height;
             const frameRatio = slot.w / slot.h;
-            
             s.scale = (imgRatio > frameRatio) ? (slot.h / s.obj.height) : (slot.w / s.obj.width);
             s.minX = slot.w - (s.obj.width * s.scale); s.maxX = 0;
             s.minY = slot.h - (s.obj.height * s.scale); s.maxY = 0;
             s.x = (s.minX + s.maxX) / 2; s.y = (s.minY + s.maxY) / 2;
-            
             draw();
         }
 
@@ -348,32 +412,28 @@
                 const s = state[slot.key];
                 if (s.loaded) {
                     drawImageClipped(s, slot.x, slot.y, slot.w, slot.h);
+                    
+                    if (s.frameUrl) {
+                        const fImg = new Image();
+                        fImg.crossOrigin = "anonymous";
+                        fImg.src = s.frameUrl;
+                        ctx.drawImage(fImg, slot.x, slot.y, slot.w, slot.h);
+                    }
                 }
                 ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 4;
                 ctx.strokeRect(slot.x, slot.y, slot.w, slot.h);
             });
 
-            // 顯示文字提示
+            // 空白提示
             const hasImg1 = state.img1.loaded;
             const hasImg2 = state.img2.loaded;
             const ready = currentSize === '2R' ? (hasImg1 || hasImg2) : hasImg1;
-
             if (!ready) {
-                ctx.fillStyle = '#aaaaaa';
-                ctx.font = 'bold 40px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                
-                let subTxt = '';
-                if (currentSize === '2R') {
-                    subTxt = currentOri === 'V' ? '(2R 直向 / 左右)' : '(2R 橫向 / 上下)';
-                } else {
-                    subTxt = currentOri === 'V' ? '(3R 直向)' : '(3R 橫向)';
-                }
-                
+                ctx.fillStyle = '#aaaaaa'; ctx.font = 'bold 40px Arial';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                let subTxt = currentSize === '2R' ? (currentOri==='V'?'(2R直 左右 1cm)':'(2R橫 上下)') : (currentOri==='V'?'(3R 直向)':'(3R 橫向)');
                 ctx.fillText('預覽區域', canvas.width/2, canvas.height/2);
-                ctx.font = '30px Arial';
-                ctx.fillText(subTxt, canvas.width/2, canvas.height/2 + 50);
+                ctx.font = '30px Arial'; ctx.fillText(subTxt, canvas.width/2, canvas.height/2 + 50);
             }
         }
 
@@ -389,66 +449,41 @@
             const scaleX = canvas.width / rect.width;
             const realX = (x - rect.left) * scaleX;
             const realY = (y - rect.top) * (canvas.height / rect.height);
-            
             let hitKey = null;
             layout.slots.forEach(slot => {
-                if (realX >= slot.x && realX <= slot.x + slot.w && 
-                    realY >= slot.y && realY <= slot.y + slot.h) {
+                if (realX >= slot.x && realX <= slot.x + slot.w && realY >= slot.y && realY <= slot.y + slot.h) {
                     hitKey = slot.key;
                 }
             });
-
             if (hitKey && state[hitKey].loaded) {
-                state.dragging = hitKey;
-                state.lastX = x;
-                state.lastY = y;
-            } else {
-                state.dragging = null;
-            }
+                state.dragging = hitKey; state.lastX = x; state.lastY = y;
+            } else { state.dragging = null; }
         }
-
         function handleMove(e, x, y) {
             if (!state.dragging) return;
             if (e.cancelable) e.preventDefault();
-
             const dx = x - state.lastX; const dy = y - state.lastY;
             const s = state[state.dragging];
             const scale = canvas.width / canvas.getBoundingClientRect().width;
-            
             s.x += dx * scale; s.y += dy * scale;
             if (s.x > s.maxX) s.x = s.maxX; if (s.x < s.minX) s.x = s.minX;
             if (s.y > s.maxY) s.y = s.maxY; if (s.y < s.minY) s.y = s.minY;
-            
-            state.lastX = x; state.lastY = y; 
-            draw();
+            state.lastX = x; state.lastY = y; draw();
         }
-
         function handleEnd() { state.dragging = null; }
 
         canvas.addEventListener('mousedown', e => handleStart(e.clientX, e.clientY));
-        window.addEventListener('mousemove', e => {
-            if(state.dragging) { e.preventDefault(); handleMove(e, e.clientX, e.clientY); }
-        });
+        window.addEventListener('mousemove', e => { if(state.dragging) { e.preventDefault(); handleMove(e, e.clientX, e.clientY); } });
         window.addEventListener('mouseup', handleEnd);
-        canvas.addEventListener('touchstart', e => { 
-            const t = e.touches[0]; handleStart(t.clientX, t.clientY); 
-        }, {passive: false});
-        canvas.addEventListener('touchmove', e => { 
-            const t = e.touches[0]; handleMove(e, t.clientX, t.clientY); 
-        }, {passive: false});
+        canvas.addEventListener('touchstart', e => { const t = e.touches[0]; handleStart(t.clientX, t.clientY); }, {passive: false});
+        canvas.addEventListener('touchmove', e => { const t = e.touches[0]; handleMove(e, t.clientX, t.clientY); }, {passive: false});
         canvas.addEventListener('touchend', handleEnd);
 
         function handleFile(e, key) {
             const file = e.target.files[0];
             if(file){
                 const reader = new FileReader();
-                reader.onload = e => { 
-                    state[key].obj.src = e.target.result; 
-                    state[key].obj.onload = () => { 
-                        state[key].loaded = true; 
-                        initImageState(key); 
-                    }
-                };
+                reader.onload = e => { state[key].obj.src = e.target.result; state[key].obj.onload = () => { state[key].loaded = true; initImageState(key); }};
                 reader.readAsDataURL(file);
             }
         }
@@ -456,40 +491,29 @@
         document.getElementById('upload2').addEventListener('change', e => handleFile(e, 'img2'));
 
         async function shareOrSave() {
-            const hasImg1 = state.img1.loaded;
-            const hasImg2 = state.img2.loaded;
+            const hasImg1 = state.img1.loaded; const hasImg2 = state.img2.loaded;
             const ready = currentSize === '2R' ? (hasImg1 || hasImg2) : hasImg1;
-
             if (!ready) { alert("請先上傳照片！"); return; }
-            
             if (navigator.share && navigator.canShare) {
                  canvas.toBlob(async (blob) => {
                     const file = new File([blob], "Greenery_Photo.jpg", { type: "image/jpeg" });
                     try {
                         if (navigator.canShare({ files: [file] })) {
-                            await navigator.share({
-                                files: [file],
-                                title: '青苗琴行照片',
-                                text: '照片排版完成'
-                            });
+                            await navigator.share({ files: [file], title: '青苗琴行照片', text: '照片排版完成' });
                             return; 
                         }
                     } catch (error) { console.log("Share skipped"); }
                     openPreviewModal(); 
                 }, 'image/jpeg', 0.95);
-            } else {
-                openPreviewModal();
-            }
+            } else { openPreviewModal(); }
         }
-
         function openPreviewModal() {
             const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
             document.getElementById('finalImage').src = dataUrl;
             document.getElementById('downloadModal').style.display = 'flex';
         }
-        function closeModal() { document.getElementById('downloadModal').style.display = 'none'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
         
-        // 初始載入 UI
         updateUI();
     </script>
 </body>
