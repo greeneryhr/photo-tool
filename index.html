@@ -191,8 +191,7 @@
 
     <script>
         // ==========================================
-        // --- 1. 相框圖書館 (使用者設定區) ---
-        // 請在此設定您的相框
+        // --- 1. 相框圖書館 ---
         // ==========================================
         const FRAME_LIBRARY = {
             // 2R 直向
@@ -202,17 +201,17 @@
             ],
             // 2R 橫向
             r2_landscape: [
-                   { name: "青苗 A", url: "https://cdn.prod.website-files.com/68706ab53a6b0f51d8f998af/694398388d4a3cf9e3e11cc2_a7600849fa09e3efea43694f11422d95_Frame1-2RH-01.png" },
+                { name: "青苗 A", url: "https://cdn.prod.website-files.com/68706ab53a6b0f51d8f998af/694398388d4a3cf9e3e11cc2_a7600849fa09e3efea43694f11422d95_Frame1-2RH-01.png" },
                 { name: "青苗 B", url: "https://cdn.prod.website-files.com/68706ab53a6b0f51d8f998af/6943a48f299debb02cfb3b00_Frame2-2RH.png" }
             ],
             // 3R 直向
             r3_portrait: [
-                 { name: "青苗 A", url: "https://cdn.prod.website-files.com/68706ab53a6b0f51d8f998af/6943a48f7ff0dda8af121eb6_Frame1-3RV.png" },
+                { name: "青苗 A", url: "https://cdn.prod.website-files.com/68706ab53a6b0f51d8f998af/6943a48f7ff0dda8af121eb6_Frame1-3RV.png" },
                 { name: "青苗 B", url: "https://cdn.prod.website-files.com/68706ab53a6b0f51d8f998af/6943a48f51d1a413c35b99a5_Frame2-3RV-.png" }
             ],
             // 3R 橫向
             r3_landscape: [
-                  { name: "青苗 A", url: "https://cdn.prod.website-files.com/68706ab53a6b0f51d8f998af/6943a48f2ddd4c77f886fbf5_Frame1-3RH.png" },
+                { name: "青苗 A", url: "https://cdn.prod.website-files.com/68706ab53a6b0f51d8f998af/6943a48f2ddd4c77f886fbf5_Frame1-3RH.png" },
                 { name: "青苗 B", url: "https://cdn.prod.website-files.com/68706ab53a6b0f51d8f998af/6943a48f7ebcb6d579a7fa95_Frame2-3RH.png" }
             ]
         };
@@ -237,13 +236,62 @@
             dragging: null, lastX: 0, lastY: 0
         };
 
+        // --- 優化：圖片緩存 (Cache) ---
+        // 用來儲存已經載入的 Image 物件，避免重複下載
+        const imageCache = {}; 
+
         let activeEditKey = null;
 
         canvas.width = PIXEL_W;
         canvas.height = PIXEL_H;
 
-        function selectSize(size) { currentSize = size; updateUI(); }
-        function selectOrientation(ori) { currentOri = ori; updateUI(); }
+        // --- 初始化：預載所有相框 ---
+        function preloadFrames() {
+            console.log("開始預載相框...");
+            for (const category in FRAME_LIBRARY) {
+                FRAME_LIBRARY[category].forEach(frame => {
+                    if (!imageCache[frame.url]) {
+                        const img = new Image();
+                        img.crossOrigin = "anonymous";
+                        img.src = frame.url;
+                        imageCache[frame.url] = img;
+                    }
+                });
+            }
+        }
+        // 執行預載
+        preloadFrames();
+
+
+        // 切換尺寸：會觸發重置相框
+        function selectSize(size) { 
+            if (currentSize !== size) {
+                currentSize = size; 
+                resetFrames(); // 重置相框
+                updateUI(); 
+            }
+        }
+
+        // 切換方向：會觸發重置相框
+        function selectOrientation(ori) { 
+            if (currentOri !== ori) {
+                currentOri = ori; 
+                resetFrames(); // 重置相框
+                updateUI(); 
+            }
+        }
+
+        // --- 重置相框功能 (解決變形問題) ---
+        function resetFrames() {
+            state.img1.frameUrl = null;
+            state.img2.frameUrl = null;
+            
+            // 重置按鈕狀態
+            document.getElementById('btn-frame-1').classList.remove('active');
+            document.getElementById('btn-frame-1').innerHTML = "🖼️ 選擇相框";
+            document.getElementById('btn-frame-2').classList.remove('active');
+            document.getElementById('btn-frame-2').innerHTML = "🖼️ 選擇相框";
+        }
 
         // --- 相框選擇邏輯 ---
         function openFrameSelector(key) {
@@ -275,11 +323,12 @@
             noFrameDiv.innerHTML = `<div class="frame-none">🚫 無相框</div><span>移除</span>`;
             listContainer.appendChild(noFrameDiv);
 
-            // 產生列表
+            // 產生列表 (使用預載的緩存圖片來顯示縮圖，速度更快)
             frames.forEach(frame => {
                 const item = document.createElement('div');
                 item.className = 'frame-item';
                 item.onclick = () => applyFrame(frame.url);
+                // 這裡的 img src 還是用 url，瀏覽器會自動從 cache 抓
                 item.innerHTML = `<img src="${frame.url}"><span>${frame.name}</span>`;
                 listContainer.appendChild(item);
             });
@@ -317,7 +366,6 @@
             const label2 = document.getElementById('label2');
 
             if (currentSize === '2R') {
-                // *** 這裡修改文字為「橫向/相架用」 ***
                 btnH.innerText = "橫向/相架用 ↔";
                 group2.classList.remove('hidden');
                 
@@ -417,17 +465,23 @@
                     drawImageClipped(s, slot.x, slot.y, slot.w, slot.h);
                     
                     if (s.frameUrl) {
-                        const fImg = new Image();
-                        fImg.crossOrigin = "anonymous";
-                        fImg.src = s.frameUrl;
-                        ctx.drawImage(fImg, slot.x, slot.y, slot.w, slot.h);
+                        // 使用緩存的圖片物件繪製，避免閃爍或重新下載
+                        const cachedImg = imageCache[s.frameUrl];
+                        if (cachedImg && cachedImg.complete) {
+                             ctx.drawImage(cachedImg, slot.x, slot.y, slot.w, slot.h);
+                        } else {
+                            // 萬一緩存沒抓到 (極少見)，用新物件補救
+                            const fImg = new Image();
+                            fImg.crossOrigin = "anonymous";
+                            fImg.src = s.frameUrl;
+                            ctx.drawImage(fImg, slot.x, slot.y, slot.w, slot.h);
+                        }
                     }
                 }
                 ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 4;
                 ctx.strokeRect(slot.x, slot.y, slot.w, slot.h);
             });
 
-            // 空白提示
             const hasImg1 = state.img1.loaded;
             const hasImg2 = state.img2.loaded;
             const ready = currentSize === '2R' ? (hasImg1 || hasImg2) : hasImg1;
