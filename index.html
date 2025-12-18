@@ -74,7 +74,7 @@
 
         canvas {
             width: 100% !important; height: auto !important; background: white;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15); cursor: grab;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15); cursor: pointer; /* 改為手指游標 */
         }
         canvas:active { cursor: grabbing; }
 
@@ -158,7 +158,7 @@
         </div>
     </div>
 
-    <div class="hint-overlay">👆 上傳後可拖曳照片調整位置</div>
+    <div class="hint-overlay">👆 點擊預覽區可上傳 / 拖曳可調整</div>
 
     <div class="canvas-container">
         <canvas id="photoCanvas"></canvas>
@@ -233,21 +233,17 @@
         const state = {
             img1: { obj: new Image(), loaded: false, x: 0, y: 0, scale: 1, minX:0, maxX:0, minY:0, maxY:0, frameUrl: null },
             img2: { obj: new Image(), loaded: false, x: 0, y: 0, scale: 1, minX:0, maxX:0, minY:0, maxY:0, frameUrl: null },
-            dragging: null, lastX: 0, lastY: 0
+            dragging: null, lastX: 0, lastY: 0, 
+            isDrag: false // 新增：用來判斷是點擊還是拖曳
         };
 
-        // --- 優化：圖片緩存 (Cache) ---
-        // 用來儲存已經載入的 Image 物件，避免重複下載
         const imageCache = {}; 
-
         let activeEditKey = null;
 
         canvas.width = PIXEL_W;
         canvas.height = PIXEL_H;
 
-        // --- 初始化：預載所有相框 ---
         function preloadFrames() {
-            console.log("開始預載相框...");
             for (const category in FRAME_LIBRARY) {
                 FRAME_LIBRARY[category].forEach(frame => {
                     if (!imageCache[frame.url]) {
@@ -259,52 +255,42 @@
                 });
             }
         }
-        // 執行預載
         preloadFrames();
 
-
-        // 切換尺寸：會觸發重置相框
         function selectSize(size) { 
             if (currentSize !== size) {
                 currentSize = size; 
-                resetFrames(); // 重置相框
+                resetFrames();
                 updateUI(); 
             }
         }
 
-        // 切換方向：會觸發重置相框
         function selectOrientation(ori) { 
             if (currentOri !== ori) {
                 currentOri = ori; 
-                resetFrames(); // 重置相框
+                resetFrames();
                 updateUI(); 
             }
         }
 
-        // --- 重置相框功能 (解決變形問題) ---
         function resetFrames() {
             state.img1.frameUrl = null;
             state.img2.frameUrl = null;
-            
-            // 重置按鈕狀態
             document.getElementById('btn-frame-1').classList.remove('active');
             document.getElementById('btn-frame-1').innerHTML = "🖼️ 選擇相框";
             document.getElementById('btn-frame-2').classList.remove('active');
             document.getElementById('btn-frame-2').innerHTML = "🖼️ 選擇相框";
         }
 
-        // --- 相框選擇邏輯 ---
         function openFrameSelector(key) {
             activeEditKey = key;
             const modal = document.getElementById('frameModal');
             const listContainer = document.getElementById('frame-list');
             const hint = document.getElementById('frame-hint');
-            
             listContainer.innerHTML = ''; 
 
             let category = '';
             let catName = '';
-            
             if (currentSize === '2R') {
                 if (currentOri === 'V') { category = 'r2_portrait'; catName = '2R 直向'; }
                 else { category = 'r2_landscape'; catName = '2R 橫向'; }
@@ -316,23 +302,19 @@
             hint.innerText = `適用於: ${catName}`;
             const frames = FRAME_LIBRARY[category] || [];
 
-            // 不使用相框選項
             const noFrameDiv = document.createElement('div');
             noFrameDiv.className = 'frame-item';
             noFrameDiv.onclick = () => applyFrame(null);
             noFrameDiv.innerHTML = `<div class="frame-none">🚫 無相框</div><span>移除</span>`;
             listContainer.appendChild(noFrameDiv);
 
-            // 產生列表 (使用預載的緩存圖片來顯示縮圖，速度更快)
             frames.forEach(frame => {
                 const item = document.createElement('div');
                 item.className = 'frame-item';
                 item.onclick = () => applyFrame(frame.url);
-                // 這裡的 img src 還是用 url，瀏覽器會自動從 cache 抓
                 item.innerHTML = `<img src="${frame.url}"><span>${frame.name}</span>`;
                 listContainer.appendChild(item);
             });
-
             modal.style.display = 'flex';
         }
 
@@ -341,11 +323,9 @@
                 state[activeEditKey].frameUrl = url;
                 const btn = document.getElementById(activeEditKey === 'img1' ? 'btn-frame-1' : 'btn-frame-2');
                 if (url) {
-                    btn.classList.add('active');
-                    btn.innerHTML = "🖼️ 已選相框";
+                    btn.classList.add('active'); btn.innerHTML = "🖼️ 已選相框";
                 } else {
-                    btn.classList.remove('active');
-                    btn.innerHTML = "🖼️ 選擇相框";
+                    btn.classList.remove('active'); btn.innerHTML = "🖼️ 選擇相框";
                 }
                 draw();
             }
@@ -461,37 +441,34 @@
             
             layout.slots.forEach(slot => {
                 const s = state[slot.key];
+                
+                // 繪製照片或提示
                 if (s.loaded) {
                     drawImageClipped(s, slot.x, slot.y, slot.w, slot.h);
-                    
                     if (s.frameUrl) {
-                        // 使用緩存的圖片物件繪製，避免閃爍或重新下載
                         const cachedImg = imageCache[s.frameUrl];
                         if (cachedImg && cachedImg.complete) {
                              ctx.drawImage(cachedImg, slot.x, slot.y, slot.w, slot.h);
                         } else {
-                            // 萬一緩存沒抓到 (極少見)，用新物件補救
-                            const fImg = new Image();
-                            fImg.crossOrigin = "anonymous";
-                            fImg.src = s.frameUrl;
+                            const fImg = new Image(); fImg.crossOrigin = "anonymous"; fImg.src = s.frameUrl;
                             ctx.drawImage(fImg, slot.x, slot.y, slot.w, slot.h);
                         }
                     }
+                } else {
+                    // 空白時繪製「點擊上傳」提示
+                    ctx.save();
+                    ctx.fillStyle = '#f0f0f0';
+                    ctx.fillRect(slot.x, slot.y, slot.w, slot.h);
+                    ctx.fillStyle = '#999';
+                    ctx.font = 'bold 30px Arial';
+                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText('➕ 點擊上傳', slot.x + slot.w/2, slot.y + slot.h/2);
+                    ctx.restore();
                 }
+                
                 ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 4;
                 ctx.strokeRect(slot.x, slot.y, slot.w, slot.h);
             });
-
-            const hasImg1 = state.img1.loaded;
-            const hasImg2 = state.img2.loaded;
-            const ready = currentSize === '2R' ? (hasImg1 || hasImg2) : hasImg1;
-            if (!ready) {
-                ctx.fillStyle = '#aaaaaa'; ctx.font = 'bold 40px Arial';
-                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                let subTxt = currentSize === '2R' ? (currentOri==='V'?'(2R直 左右 1cm)':'(2R橫 上下)') : (currentOri==='V'?'(3R 直向)':'(3R 橫向)');
-                ctx.fillText('預覽區域', canvas.width/2, canvas.height/2);
-                ctx.font = '30px Arial'; ctx.fillText(subTxt, canvas.width/2, canvas.height/2 + 50);
-            }
         }
 
         function drawImageClipped(s, fx, fy, fw, fh) {
@@ -500,40 +477,74 @@
             ctx.restore();
         }
 
+        // --- 點擊與拖曳邏輯 ---
         function handleStart(x, y) {
             const layout = getLayout();
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
             const realX = (x - rect.left) * scaleX;
             const realY = (y - rect.top) * (canvas.height / rect.height);
+            
+            state.isDrag = false; // 重置拖曳旗標
+            state.startX = x; // 記錄原始螢幕座標
+            state.startY = y;
+
             let hitKey = null;
             layout.slots.forEach(slot => {
                 if (realX >= slot.x && realX <= slot.x + slot.w && realY >= slot.y && realY <= slot.y + slot.h) {
                     hitKey = slot.key;
                 }
             });
-            if (hitKey && state[hitKey].loaded) {
+
+            if (hitKey) {
                 state.dragging = hitKey; state.lastX = x; state.lastY = y;
             } else { state.dragging = null; }
         }
+
         function handleMove(e, x, y) {
             if (!state.dragging) return;
-            if (e.cancelable) e.preventDefault();
-            const dx = x - state.lastX; const dy = y - state.lastY;
-            const s = state[state.dragging];
-            const scale = canvas.width / canvas.getBoundingClientRect().width;
-            s.x += dx * scale; s.y += dy * scale;
-            if (s.x > s.maxX) s.x = s.maxX; if (s.x < s.minX) s.x = s.minX;
-            if (s.y > s.maxY) s.y = s.maxY; if (s.y < s.minY) s.y = s.minY;
-            state.lastX = x; state.lastY = y; draw();
+            
+            // 計算移動距離，判斷是否為拖曳
+            const moveDist = Math.sqrt(Math.pow(x - state.startX, 2) + Math.pow(y - state.startY, 2));
+            if (moveDist > 5) {
+                state.isDrag = true;
+                if (e.cancelable) e.preventDefault(); // 只有確認是拖曳時才阻止捲動
+            }
+
+            if (state.isDrag && state[state.dragging].loaded) {
+                const dx = x - state.lastX; const dy = y - state.lastY;
+                const s = state[state.dragging];
+                const scale = canvas.width / canvas.getBoundingClientRect().width;
+                s.x += dx * scale; s.y += dy * scale;
+                if (s.x > s.maxX) s.x = s.maxX; if (s.x < s.minX) s.x = s.minX;
+                if (s.y > s.maxY) s.y = s.maxY; if (s.y < s.minY) s.y = s.minY;
+                state.lastX = x; state.lastY = y; draw();
+            }
         }
-        function handleEnd() { state.dragging = null; }
+
+        function handleEnd() { 
+            // 如果不是拖曳 (即點擊)，則觸發上傳
+            if (!state.isDrag && state.dragging) {
+                const inputId = state.dragging === 'img1' ? 'upload1' : 'upload2';
+                document.getElementById(inputId).click();
+            }
+            state.dragging = null; 
+        }
 
         canvas.addEventListener('mousedown', e => handleStart(e.clientX, e.clientY));
-        window.addEventListener('mousemove', e => { if(state.dragging) { e.preventDefault(); handleMove(e, e.clientX, e.clientY); } });
+        window.addEventListener('mousemove', e => { 
+            if(state.dragging) handleMove(e, e.clientX, e.clientY); 
+        });
         window.addEventListener('mouseup', handleEnd);
-        canvas.addEventListener('touchstart', e => { const t = e.touches[0]; handleStart(t.clientX, t.clientY); }, {passive: false});
-        canvas.addEventListener('touchmove', e => { const t = e.touches[0]; handleMove(e, t.clientX, t.clientY); }, {passive: false});
+        
+        canvas.addEventListener('touchstart', e => { 
+            const t = e.touches[0]; handleStart(t.clientX, t.clientY); 
+        }, {passive: false});
+        
+        canvas.addEventListener('touchmove', e => { 
+            const t = e.touches[0]; handleMove(e, t.clientX, t.clientY); 
+        }, {passive: false});
+        
         canvas.addEventListener('touchend', handleEnd);
 
         function handleFile(e, key) {
@@ -575,7 +586,6 @@
     </script>
 </body>
 </html>
-
 
 
 
