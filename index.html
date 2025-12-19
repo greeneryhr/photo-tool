@@ -18,7 +18,7 @@
             display: flex; flex-direction: column; align-items: center;
             padding: 15px; margin: 0; color: #333;
             overscroll-behavior-y: auto; 
-            padding-bottom: 50px;
+            padding-bottom: 100px; /* 底部留白 */
             user-select: none;
         }
         h2 { margin: 15px 0 10px 0; font-size: 1.4rem; color: #2e7d32; text-align: center; font-weight: bold; }
@@ -48,8 +48,6 @@
         .input-group { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #f0f0f0; transition: background 0.3s; }
         .input-group:last-child { border: none; padding-bottom: 0; margin-bottom: 0; }
         .hidden { display: none !important; }
-        
-        /* 高亮樣式 */
         .input-group.active-group { background-color: #e8f5e9; padding: 15px; border-radius: 10px; border-bottom: none; }
 
         .label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -79,42 +77,47 @@
             cursor: pointer; touch-action: pan-y; 
         }
 
-        /* --- 底部靜態控制區 (Static Footer) --- */
+        /* --- 底部靜態控制區 --- */
         .static-footer {
             width: 100%; max-width: 600px;
-            display: flex; flex-direction: column; gap: 15px;
-            padding: 10px 0 30px 0;
+            display: flex; flex-direction: column; 
+            /* 這裡增加了間距 */
+            gap: 30px; 
+            padding: 10px 0 50px 0;
         }
 
-        /* 縮放面板 (選中照片時顯示) */
+        /* 縮放面板 */
         .zoom-panel {
             display: none; /* 預設隱藏 */
-            align-items: center; justify-content: center; gap: 15px;
+            align-items: center; justify-content: center; gap: 20px;
             background: #fff; border: 1px solid #ddd;
-            padding: 10px 20px; border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            /* 增加內距，讓手指更好按 */
+            padding: 15px 25px; 
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             animation: fadeIn 0.3s ease;
         }
         .zoom-panel.show { display: flex; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
-        .slider-icon { font-size: 14px; color: #555; font-weight: bold; }
+        .slider-icon { font-size: 16px; color: #555; font-weight: bold; }
+        
         input[type=range] {
-            flex: 1; -webkit-appearance: none; height: 6px; background: #ccc; border-radius: 3px; outline: none;
+            flex: 1; -webkit-appearance: none; height: 8px; background: #ddd; border-radius: 4px; outline: none;
         }
         input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%;
+            -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%;
             background: #4caf50; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 2px solid #fff;
         }
 
         /* 雙按鈕 */
         .footer-buttons {
-            display: flex; gap: 10px; width: 100%;
+            display: flex; gap: 15px; width: 100%;
         }
         .btn-footer {
-            flex: 1; padding: 14px; border: none; border-radius: 12px;
-            font-size: 16px; font-weight: bold; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; gap: 6px;
+            flex: 1; padding: 16px; border: none; border-radius: 14px;
+            font-size: 17px; font-weight: bold; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
             transition: transform 0.1s;
         }
         .btn-share { background-color: #4caf50; color: white; box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3); }
@@ -194,7 +197,7 @@
 
     <div class="static-footer">
         <div id="zoom-container" class="zoom-panel">
-            <span class="slider-icon" style="font-size:13px; color:#2e7d32;">🔍 縮放</span>
+            <span class="slider-icon" style="color:#2e7d32;">🔍 縮放</span>
             <span class="slider-icon">➖</span>
             <input type="range" id="zoom-slider" min="1" max="3" step="0.05" value="1">
             <span class="slider-icon">➕</span>
@@ -525,11 +528,10 @@
                     }
                 }
                 
-                // 邊框邏輯：匯出時不顯示綠框，只顯示細灰色裁切線
                 if (!isExporting && state.selectedKey === slot.key) {
                     ctx.strokeStyle = '#4caf50'; ctx.lineWidth = 8;
                 } else {
-                    ctx.strokeStyle = '#cccccc'; ctx.lineWidth = isExporting ? 1 : 4; // 匯出時線條變細
+                    ctx.strokeStyle = '#cccccc'; ctx.lineWidth = isExporting ? 1 : 4;
                 }
                 ctx.strokeRect(slot.x, slot.y, slot.w, slot.h);
             });
@@ -543,7 +545,7 @@
             ctx.restore();
         }
 
-        // --- 觸控邏輯 (iOS 卷動優化) ---
+        // --- 觸控邏輯 ---
         function handleStart(x, y) {
             const layout = getLayout();
             const rect = canvas.getBoundingClientRect();
@@ -626,41 +628,12 @@
             }
         });
 
-        // 雙指縮放
-        function getDist(t1, t2) {
-            return Math.sqrt(Math.pow(t1.clientX - t2.clientX, 2) + Math.pow(t1.clientY - t2.clientY, 2));
-        }
-
         canvas.addEventListener('mousedown', e => handleStart(e.clientX, e.clientY));
         window.addEventListener('mousemove', e => { if(state.dragging) handleMove(e, e.clientX, e.clientY); });
         window.addEventListener('mouseup', handleEnd);
 
-        canvas.addEventListener('touchstart', e => { 
-            if (e.touches.length === 2 && state.selectedKey) {
-                state.initialPinchDist = getDist(e.touches[0], e.touches[1]);
-                state.initialZoom = state[state.selectedKey].zoom;
-                e.preventDefault(); 
-            } else {
-                const t = e.touches[0]; handleStart(t.clientX, t.clientY); 
-            }
-        }, {passive: false});
-
-        canvas.addEventListener('touchmove', e => { 
-            if (e.touches.length === 2 && state.selectedKey) {
-                e.preventDefault();
-                const dist = getDist(e.touches[0], e.touches[1]);
-                const scale = dist / state.initialPinchDist;
-                let newZoom = state.initialZoom * scale;
-                if(newZoom < 1) newZoom = 1; if(newZoom > 3) newZoom = 3;
-                
-                const slider = document.getElementById('zoom-slider');
-                if(slider) slider.value = newZoom;
-                updateZoom(state.selectedKey, newZoom);
-            } else {
-                const t = e.touches[0]; handleMove(e, t.clientX, t.clientY); 
-            }
-        }, {passive: false});
-
+        canvas.addEventListener('touchstart', e => { const t = e.touches[0]; handleStart(t.clientX, t.clientY); }, {passive: false});
+        canvas.addEventListener('touchmove', e => { const t = e.touches[0]; handleMove(e, t.clientX, t.clientY); }, {passive: false});
         canvas.addEventListener('touchend', handleEnd);
 
         function handleFile(e, key) {
@@ -681,51 +654,47 @@
         document.getElementById('upload1').addEventListener('change', e => handleFile(e, 'img1'));
         document.getElementById('upload2').addEventListener('change', e => handleFile(e, 'img2'));
 
+        // 分享 (綠色)
         async function doShare() {
-            const hasImg1 = state.img1.loaded; const hasImg2 = state.img2.loaded;
-            const ready = currentSize === '2R' ? (hasImg1 || hasImg2) : hasImg1;
-            if (!ready) { alert("請先上傳照片！"); return; }
-
-            // 匯出模式：清除綠框
-            draw(true);
+            state.selectedKey = null; highlightGroup(null); 
+            draw(true); // 匯出模式
 
             setTimeout(async () => {
+                const hasImg1 = state.img1.loaded; const hasImg2 = state.img2.loaded;
+                const ready = currentSize === '2R' ? (hasImg1 || hasImg2) : hasImg1;
+                if (!ready) { alert("請先上傳照片！"); draw(false); return; }
+
                 if (navigator.share && navigator.canShare) {
                      canvas.toBlob(async (blob) => {
                         const file = new File([blob], "Greenery_Photo.jpg", { type: "image/jpeg" });
                         try {
                             if (navigator.canShare({ files: [file] })) {
-                                await navigator.share({ 
-                                    files: [file], 
-                                    title: '青苗琴行', 
-                                    text: '照片排版完成' 
-                                });
+                                await navigator.share({ files: [file], title: '青苗琴行', text: '照片排版完成' });
                             }
                         } catch (error) { console.log("Share cancelled or failed"); }
-                        // 恢復顯示綠框
-                        draw(false);
+                        draw(false); // 恢復
                     }, 'image/jpeg', 0.95);
-                } else {
-                    alert("您的瀏覽器不支援系統分享，請使用右側儲存按鈕。");
+                } else { 
+                    alert("瀏覽器不支援分享，請使用右側儲存按鈕");
                     draw(false);
                 }
             }, 100);
         }
 
+        // 儲存 (藍色)
         function doLegacySave() {
-            const hasImg1 = state.img1.loaded; const hasImg2 = state.img2.loaded;
-            const ready = currentSize === '2R' ? (hasImg1 || hasImg2) : hasImg1;
-            if (!ready) { alert("請先上傳照片！"); return; }
-
-            // 匯出模式：清除綠框
-            draw(true);
+            state.selectedKey = null; highlightGroup(null); 
+            draw(true); // 匯出模式
 
             setTimeout(() => {
+                const hasImg1 = state.img1.loaded; const hasImg2 = state.img2.loaded;
+                const ready = currentSize === '2R' ? (hasImg1 || hasImg2) : hasImg1;
+                if (!ready) { alert("請先上傳照片！"); draw(false); return; }
+                
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
                 document.getElementById('finalImage').src = dataUrl;
                 document.getElementById('downloadModal').style.display = 'flex';
-                // 恢復顯示綠框
-                draw(false);
+                draw(false); // 恢復
             }, 100);
         }
 
