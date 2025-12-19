@@ -17,8 +17,9 @@
             background-color: #f0f7f4;
             display: flex; flex-direction: column; align-items: center;
             padding: 15px; margin: 0; color: #333;
+            /* 允許頁面垂直捲動 */
             overscroll-behavior-y: auto; 
-            padding-bottom: 80px;
+            padding-bottom: 120px;
             user-select: none;
         }
         h2 { margin: 15px 0 10px 0; font-size: 1.4rem; color: #2e7d32; text-align: center; font-weight: bold; }
@@ -75,35 +76,34 @@
             width: 100% !important; height: auto !important; background: white;
             box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
             cursor: pointer; 
-            /* 關鍵修改：允許垂直捲動，但由 JS 控制何時阻止 */
+            /* 關鍵：pan-y 允許垂直捲動，除非 JS 阻止 */
             touch-action: pan-y; 
         }
 
-        /* --- 橫向浮動滑桿 (Horizontal Slider) --- */
-        .horizontal-slider-container {
-            position: absolute; 
-            bottom: 20px; /* 距離底部 */
-            left: 50%; transform: translateX(-50%); /* 水平置中 */
-            width: 80%; max-width: 300px; height: 50px;
-            display: none; /* 預設隱藏 */
-            align-items: center; justify-content: center; gap: 10px;
-            background: rgba(255, 255, 255, 0.95); border-radius: 25px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            border: 1px solid #ddd;
-            z-index: 50; padding: 0 15px;
+        /* 懸浮縮放滑桿 */
+        .floating-zoom-panel {
+            position: fixed; 
+            bottom: 90px; 
+            left: 50%; transform: translateX(-50%) translateY(20px);
+            width: 90%; max-width: 400px; height: 50px;
+            display: none; 
+            align-items: center; justify-content: center; gap: 15px;
+            background: rgba(255, 255, 255, 0.98); 
+            border-radius: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.25);
+            border: 1px solid #e0e0e0;
+            z-index: 100; padding: 0 20px;
+            opacity: 0; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        .horizontal-slider-container.show { display: flex; animation: slideUp 0.3s ease-out; }
+        .floating-zoom-panel.show { display: flex; opacity: 1; transform: translateX(-50%) translateY(0); }
 
-        @keyframes slideUp { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
-
-        .slider-icon { font-size: 14px; color: #666; }
-        
+        .slider-icon { font-size: 16px; color: #555; font-weight: bold; }
         input[type=range] {
-            flex: 1; -webkit-appearance: none; height: 6px; background: #ddd; border-radius: 3px; outline: none;
+            flex: 1; -webkit-appearance: none; height: 8px; background: #e0e0e0; border-radius: 4px; outline: none;
         }
         input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%;
-            background: #4caf50; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%;
+            background: #4caf50; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 2px solid #fff;
         }
 
         .hint-overlay { 
@@ -183,16 +183,17 @@
         </div>
     </div>
 
-    <div class="hint-overlay">👆 點擊預覽區上傳 / 雙指縮放 / 拖曳調整</div>
+    <div class="hint-overlay">👆 點擊預覽區上傳 / 拖曳調整 / 雙指縮放</div>
 
     <div class="canvas-container">
         <canvas id="photoCanvas"></canvas>
-        
-        <div id="zoom-container" class="horizontal-slider-container">
-            <span class="slider-icon">➖</span>
-            <input type="range" id="zoom-slider" min="1" max="3" step="0.05" value="1">
-            <span class="slider-icon">➕</span>
-        </div>
+    </div>
+
+    <div id="zoom-container" class="floating-zoom-panel">
+        <span class="slider-icon" style="font-size:12px">🔍 縮放</span>
+        <span class="slider-icon">➖</span>
+        <input type="range" id="zoom-slider" min="1" max="3" step="0.05" value="1">
+        <span class="slider-icon">➕</span>
     </div>
 
     <div class="action-area">
@@ -290,18 +291,16 @@
             document.getElementById('btn-frame-2').innerHTML = "🖼️ 選擇相框";
         }
 
-        // --- 高亮群組與顯示滑桿 ---
+        // --- 高亮群組與顯示懸浮滑桿 ---
         function highlightGroup(key) {
             document.querySelectorAll('.input-group').forEach(el => el.classList.remove('active-group'));
             const sliderContainer = document.getElementById('zoom-container');
             const slider = document.getElementById('zoom-slider');
 
             if (key && state[key].loaded) {
-                // 高亮上傳區
                 const groupId = key === 'img1' ? 'group1' : 'group2';
                 document.getElementById(groupId).classList.add('active-group');
                 
-                // 顯示橫向滑桿
                 sliderContainer.classList.add('show');
                 slider.value = state[key].zoom;
                 
@@ -315,13 +314,11 @@
         }
 
         function selectImage(key) {
+            // 如果點擊的是還沒上傳的空位，不觸發選取，僅執行 click 事件中的上傳
+            if (!state[key].loaded) return;
+
             state.selectedKey = key;
             highlightGroup(key);
-            
-            if (!state[key].loaded) {
-                const inputId = key === 'img1' ? 'upload1' : 'upload2';
-                document.getElementById(inputId).click();
-            }
             draw();
         }
 
@@ -430,7 +427,6 @@
                 }
             }
 
-            // 重設狀態，隱藏滑桿
             state.selectedKey = null;
             highlightGroup(null);
 
@@ -543,10 +539,10 @@
             ctx.restore();
         }
 
-        // --- 觸控邏輯 (卷動修復 + 雙指縮放) ---
+        // --- 觸控邏輯 (修正版：無照片可捲動) ---
         function handleStart(x, y) {
-            // 如果點擊滑桿區域，不處理 Canvas 點擊
-            if (y > canvas.getBoundingClientRect().bottom - 60 && document.getElementById('zoom-container').classList.contains('show')) return;
+            // 防止點擊滑桿區域時觸發 Canvas 點擊
+            if (y > canvas.getBoundingClientRect().bottom && document.getElementById('zoom-container').classList.contains('show')) return;
 
             const layout = getLayout();
             const rect = canvas.getBoundingClientRect();
@@ -565,24 +561,23 @@
                 }
             });
 
-            if (hitKey) {
+            // 關鍵修正：只有當圖片「已載入」時，才設定 dragging
+            // 這樣按在空格上時，dragging 為 null，不會阻擋頁面捲動
+            if (hitKey && state[hitKey].loaded) {
                 state.dragging = hitKey; state.lastX = x; state.lastY = y;
             } else { 
                 state.dragging = null; 
-                state.selectedKey = null;
-                highlightGroup(null);
-                draw();
             }
         }
 
         function handleMove(e, x, y) {
+            // 如果沒有在拖曳圖片，直接返回 -> 允許瀏覽器預設行為 (捲動)
             if (!state.dragging) return;
             
             const moveDist = Math.sqrt(Math.pow(x - state.startX, 2) + Math.pow(y - state.startY, 2));
             if (moveDist > 5) {
                 state.isDrag = true;
-                // 只有確認是拖曳照片且有照片時，才阻止卷動
-                if (e.cancelable && state[state.dragging].loaded) e.preventDefault();
+                if (e.cancelable) e.preventDefault(); // 阻止捲動，開始移動圖片
             }
 
             if (state.isDrag && state[state.dragging].loaded) {
@@ -599,11 +594,43 @@
         }
 
         function handleEnd() { 
-            if (!state.isDrag && state.dragging) {
-                selectImage(state.dragging);
-            }
             state.dragging = null; 
         }
+
+        // --- 點擊事件 (獨立處理) ---
+        canvas.addEventListener('click', e => {
+            if (state.isDrag) return; // 如果是拖曳結束，不觸發 click
+
+            const layout = getLayout();
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const realX = (e.clientX - rect.left) * scaleX;
+            const realY = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+            let hitKey = null;
+            layout.slots.forEach(slot => {
+                if (realX >= slot.x && realX <= slot.x + slot.w && realY >= slot.y && realY <= slot.y + slot.h) {
+                    hitKey = slot.key;
+                }
+            });
+
+            if (hitKey) {
+                // 如果已載入 -> 選取
+                if (state[hitKey].loaded) {
+                    selectImage(hitKey);
+                } else {
+                    // 如果是空的 -> 觸發上傳
+                    state.selectedKey = hitKey; // 暫時標記選中，方便上傳後高亮
+                    const inputId = hitKey === 'img1' ? 'upload1' : 'upload2';
+                    document.getElementById(inputId).click();
+                }
+            } else {
+                // 點擊空白處 -> 取消選取
+                state.selectedKey = null;
+                highlightGroup(null);
+                draw();
+            }
+        });
 
         // 雙指縮放
         function getDist(t1, t2) {
