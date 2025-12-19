@@ -17,9 +17,9 @@
             background-color: #f0f7f4;
             display: flex; flex-direction: column; align-items: center;
             padding: 15px; margin: 0; color: #333;
-            /* 允許頁面垂直捲動 */
             overscroll-behavior-y: auto; 
-            padding-bottom: 120px;
+            /* 預留底部空間給固定面板，防止內容被遮擋 */
+            padding-bottom: 220px; 
             user-select: none;
         }
         h2 { margin: 15px 0 10px 0; font-size: 1.4rem; color: #2e7d32; text-align: center; font-weight: bold; }
@@ -76,54 +76,69 @@
             width: 100% !important; height: auto !important; background: white;
             box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
             cursor: pointer; 
-            /* 關鍵：pan-y 允許垂直捲動，除非 JS 阻止 */
             touch-action: pan-y; 
         }
 
-        /* 懸浮縮放滑桿 */
-        .floating-zoom-panel {
-            position: fixed; 
-            bottom: 90px; 
-            left: 50%; transform: translateX(-50%) translateY(20px);
-            width: 90%; max-width: 400px; height: 50px;
-            display: none; 
-            align-items: center; justify-content: center; gap: 15px;
-            background: rgba(255, 255, 255, 0.98); 
-            border-radius: 30px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.25);
-            border: 1px solid #e0e0e0;
-            z-index: 100; padding: 0 20px;
-            opacity: 0; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        /* --- 底部固定控制區 (Footer) --- */
+        .fixed-footer {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: white;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+            padding: 15px 20px 25px 20px; /* 底部多留一點給 iPhone Home Bar */
+            z-index: 100;
+            display: flex; flex-direction: column; gap: 15px;
+            border-top-left-radius: 20px; border-top-right-radius: 20px;
         }
-        .floating-zoom-panel.show { display: flex; opacity: 1; transform: translateX(-50%) translateY(0); }
 
-        .slider-icon { font-size: 16px; color: #555; font-weight: bold; }
+        /* --- 懸浮縮放滑桿 (位於 Footer 內部) --- */
+        .footer-zoom-panel {
+            width: 100%; height: 40px;
+            display: none; /* 預設隱藏 */
+            align-items: center; justify-content: center; gap: 15px;
+            background: #f5f5f5; 
+            border-radius: 20px;
+            padding: 0 15px;
+            animation: fadeIn 0.3s ease;
+        }
+        .footer-zoom-panel.show { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .slider-icon { font-size: 14px; color: #555; font-weight: bold; }
+        
         input[type=range] {
-            flex: 1; -webkit-appearance: none; height: 8px; background: #e0e0e0; border-radius: 4px; outline: none;
+            flex: 1; -webkit-appearance: none; height: 6px; background: #ccc; border-radius: 3px; outline: none;
         }
         input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%;
+            -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%;
             background: #4caf50; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 2px solid #fff;
         }
 
+        /* --- 雙按鈕區 --- */
+        .footer-buttons {
+            display: flex; gap: 10px; width: 100%;
+        }
+
+        .btn-footer {
+            flex: 1; padding: 14px; border: none; border-radius: 12px;
+            font-size: 16px; font-weight: bold; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn-share {
+            background-color: #4caf50; color: white; /* 綠色 */
+        }
+        .btn-save {
+            background-color: #2196f3; color: white; /* 藍色 */
+        }
+        .btn-footer:active { transform: scale(0.98); opacity: 0.9; }
+
+        /* 提示文字 */
         .hint-overlay { 
             text-align: center; font-size: 0.9rem; color: #2e7d32; margin-bottom: 5px; font-weight: bold;
             pointer-events: none; 
         }
-        .action-area { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px; }
 
-        .btn-main {
-            background-color: #4caf50; color: white; border: none; padding: 16px;
-            font-size: 18px; font-weight: bold; border-radius: 12px; cursor: pointer;
-            width: 100%; text-align: center; box-shadow: 0 4px 6px rgba(76, 175, 80, 0.3);
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-        }
-        .btn-main:active { transform: scale(0.98); background-color: #388e3c; }
-        .btn-secondary {
-            background-color: #fff; color: #666; border: 1px solid #ddd; padding: 12px;
-            font-size: 14px; border-radius: 12px; cursor: pointer; width: 100%;
-        }
-
+        /* 彈出視窗 */
         .modal-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.85); z-index: 1000;
@@ -183,27 +198,33 @@
         </div>
     </div>
 
-    <div class="hint-overlay">👆 點擊預覽區上傳 / 拖曳調整 / 雙指縮放</div>
+    <div class="hint-overlay">👆 點擊預覽區上傳 / 拖曳調整</div>
 
     <div class="canvas-container">
         <canvas id="photoCanvas"></canvas>
     </div>
 
-    <div id="zoom-container" class="floating-zoom-panel">
-        <span class="slider-icon" style="font-size:12px">🔍 縮放</span>
-        <span class="slider-icon">➖</span>
-        <input type="range" id="zoom-slider" min="1" max="3" step="0.05" value="1">
-        <span class="slider-icon">➕</span>
-    </div>
+    <div class="fixed-footer">
+        <div id="zoom-container" class="footer-zoom-panel">
+            <span class="slider-icon">🔍 縮放</span>
+            <span class="slider-icon">➖</span>
+            <input type="range" id="zoom-slider" min="1" max="3" step="0.05" value="1">
+            <span class="slider-icon">➕</span>
+        </div>
 
-    <div class="action-area">
-        <button class="btn-main" onclick="shareOrSave()"><span>📤</span> 儲存 / 分享圖片</button>
-        <button class="btn-secondary" onclick="openPreviewModal()">備用：傳統下載模式</button>
+        <div class="footer-buttons">
+            <button class="btn-footer btn-share" onclick="doShare()">
+                <span>📤</span> 系統分享
+            </button>
+            <button class="btn-footer btn-save" onclick="doLegacySave()">
+                <span>💾</span> 儲存 (長按)
+            </button>
+        </div>
     </div>
 
     <div id="downloadModal" class="modal-overlay">
         <div class="modal-content">
-            <p style="color:#333; margin-bottom:10px;">請長按下方圖片儲存</p>
+            <p style="color:#333; margin-bottom:10px; font-weight:bold; font-size:1.1rem;">👇 請長按下方圖片儲存</p>
             <img id="finalImage" src="">
             <button class="btn-close" onclick="closeModal('downloadModal')">關閉</button>
         </div>
@@ -298,9 +319,11 @@
             const slider = document.getElementById('zoom-slider');
 
             if (key && state[key].loaded) {
+                // 高亮上傳區
                 const groupId = key === 'img1' ? 'group1' : 'group2';
                 document.getElementById(groupId).classList.add('active-group');
                 
+                // 顯示底部懸浮滑桿
                 sliderContainer.classList.add('show');
                 slider.value = state[key].zoom;
                 
@@ -314,7 +337,7 @@
         }
 
         function selectImage(key) {
-            // 如果點擊的是還沒上傳的空位，不觸發選取，僅執行 click 事件中的上傳
+            // 如果點擊的是還沒上傳的空位，不觸發選取(讓click事件處理上傳)
             if (!state[key].loaded) return;
 
             state.selectedKey = key;
@@ -541,9 +564,6 @@
 
         // --- 觸控邏輯 (修正版：無照片可捲動) ---
         function handleStart(x, y) {
-            // 防止點擊滑桿區域時觸發 Canvas 點擊
-            if (y > canvas.getBoundingClientRect().bottom && document.getElementById('zoom-container').classList.contains('show')) return;
-
             const layout = getLayout();
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
@@ -561,8 +581,7 @@
                 }
             });
 
-            // 關鍵修正：只有當圖片「已載入」時，才設定 dragging
-            // 這樣按在空格上時，dragging 為 null，不會阻擋頁面捲動
+            // 只有當圖片「已載入」時，才設定 dragging，否則允許捲動
             if (hitKey && state[hitKey].loaded) {
                 state.dragging = hitKey; state.lastX = x; state.lastY = y;
             } else { 
@@ -571,13 +590,12 @@
         }
 
         function handleMove(e, x, y) {
-            // 如果沒有在拖曳圖片，直接返回 -> 允許瀏覽器預設行為 (捲動)
             if (!state.dragging) return;
             
             const moveDist = Math.sqrt(Math.pow(x - state.startX, 2) + Math.pow(y - state.startY, 2));
             if (moveDist > 5) {
                 state.isDrag = true;
-                if (e.cancelable) e.preventDefault(); // 阻止捲動，開始移動圖片
+                if (e.cancelable) e.preventDefault(); // 阻止捲動
             }
 
             if (state.isDrag && state[state.dragging].loaded) {
@@ -597,9 +615,9 @@
             state.dragging = null; 
         }
 
-        // --- 點擊事件 (獨立處理) ---
+        // --- 點擊事件 (獨立處理上傳) ---
         canvas.addEventListener('click', e => {
-            if (state.isDrag) return; // 如果是拖曳結束，不觸發 click
+            if (state.isDrag) return; 
 
             const layout = getLayout();
             const rect = canvas.getBoundingClientRect();
@@ -615,17 +633,15 @@
             });
 
             if (hitKey) {
-                // 如果已載入 -> 選取
                 if (state[hitKey].loaded) {
                     selectImage(hitKey);
                 } else {
-                    // 如果是空的 -> 觸發上傳
-                    state.selectedKey = hitKey; // 暫時標記選中，方便上傳後高亮
+                    // 觸發上傳
+                    state.selectedKey = hitKey;
                     const inputId = hitKey === 'img1' ? 'upload1' : 'upload2';
                     document.getElementById(inputId).click();
                 }
             } else {
-                // 點擊空白處 -> 取消選取
                 state.selectedKey = null;
                 highlightGroup(null);
                 draw();
@@ -687,33 +703,54 @@
         document.getElementById('upload1').addEventListener('change', e => handleFile(e, 'img1'));
         document.getElementById('upload2').addEventListener('change', e => handleFile(e, 'img2'));
 
-        async function shareOrSave() {
+        // --- 分享 (綠色按鈕) ---
+        async function doShare() {
+            const hasImg1 = state.img1.loaded; const hasImg2 = state.img2.loaded;
+            const ready = currentSize === '2R' ? (hasImg1 || hasImg2) : hasImg1;
+            if (!ready) { alert("請先上傳照片！"); return; }
+
+            // 取消選取框，確保截圖乾淨
             state.selectedKey = null; 
             highlightGroup(null);
             draw();
+
             setTimeout(async () => {
-                const hasImg1 = state.img1.loaded; const hasImg2 = state.img2.loaded;
-                const ready = currentSize === '2R' ? (hasImg1 || hasImg2) : hasImg1;
-                if (!ready) { alert("請先上傳照片！"); return; }
                 if (navigator.share && navigator.canShare) {
                      canvas.toBlob(async (blob) => {
                         const file = new File([blob], "Greenery_Photo.jpg", { type: "image/jpeg" });
                         try {
                             if (navigator.canShare({ files: [file] })) {
-                                await navigator.share({ files: [file], title: '青苗琴行照片', text: '照片排版完成' });
-                                return; 
+                                await navigator.share({ 
+                                    files: [file], 
+                                    title: '青苗琴行', 
+                                    text: '照片排版完成' 
+                                });
                             }
-                        } catch (error) { console.log("Share skipped"); }
-                        openPreviewModal(); 
+                        } catch (error) { console.log("Share cancelled or failed"); }
                     }, 'image/jpeg', 0.95);
-                } else { openPreviewModal(); }
+                } else {
+                    alert("您的瀏覽器不支援系統分享，請使用右側儲存按鈕。");
+                }
             }, 100);
         }
-        function openPreviewModal() {
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-            document.getElementById('finalImage').src = dataUrl;
-            document.getElementById('downloadModal').style.display = 'flex';
+
+        // --- 傳統儲存 (藍色按鈕) ---
+        function doLegacySave() {
+            const hasImg1 = state.img1.loaded; const hasImg2 = state.img2.loaded;
+            const ready = currentSize === '2R' ? (hasImg1 || hasImg2) : hasImg1;
+            if (!ready) { alert("請先上傳照片！"); return; }
+
+            state.selectedKey = null; 
+            highlightGroup(null);
+            draw();
+
+            setTimeout(() => {
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+                document.getElementById('finalImage').src = dataUrl;
+                document.getElementById('downloadModal').style.display = 'flex';
+            }, 100);
         }
+
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
         
         updateUI();
