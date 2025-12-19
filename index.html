@@ -18,11 +18,10 @@
             display: flex; flex-direction: column; align-items: center;
             padding: 15px; margin: 0; color: #333;
             overscroll-behavior-y: auto; 
-            padding-bottom: 180px; /* 預留空間給底部面板 */
+            padding-bottom: 200px; /* 底部空間 */
         }
         h2 { margin: 15px 0 10px 0; font-size: 1.4rem; color: #2e7d32; text-align: center; font-weight: bold; }
         
-        /* 模式切換按鈕 */
         .mode-switch {
             display: flex; gap: 8px;
             background: #e0e0e0; border-radius: 10px; padding: 5px;
@@ -39,8 +38,11 @@
             background: #fff; color: #2e7d32; border-color: #4caf50; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
-        /* 隱藏原生上傳控制項 (現在主要靠點擊圖片觸發) */
-        .hidden-inputs { display: none; }
+        /* --- iOS 修復重點：不能用 display:none --- */
+        .hidden-inputs { 
+            position: absolute; width: 1px; height: 1px; 
+            opacity: 0; overflow: hidden; z-index: -1; pointer-events: none;
+        }
 
         .canvas-container {
             position: relative; width: 100%; max-width: 600px; margin-bottom: 20px;
@@ -51,74 +53,70 @@
         canvas {
             width: 100% !important; height: auto !important; background: white;
             box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
-            cursor: pointer; touch-action: pan-y; 
+            cursor: pointer; touch-action: none; /* 防止拖曳時捲動頁面 */
         }
-        canvas:active { cursor: grabbing; }
 
         .hint-overlay { text-align: center; font-size: 0.9rem; color: #2e7d32; margin-bottom: 5px; font-weight: bold; }
         
-        /* 底部固定編輯面板 */
+        /* 底部編輯面板 */
         .editor-panel {
             position: fixed; bottom: 0; left: 0; width: 100%;
-            background: white; box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-            border-top-left-radius: 15px; border-top-right-radius: 15px;
-            padding: 15px 20px; z-index: 100;
-            transform: translateY(110%); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex; flex-direction: column; gap: 12px;
+            background: white; box-shadow: 0 -2px 15px rgba(0,0,0,0.15);
+            border-top-left-radius: 16px; border-top-right-radius: 16px;
+            padding: 20px; z-index: 900;
+            transform: translateY(120%); transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex; flex-direction: column; gap: 15px;
         }
         .editor-panel.show { transform: translateY(0); }
 
         .editor-header {
             display: flex; justify-content: space-between; align-items: center;
-            font-weight: bold; color: #2e7d32; border-bottom: 1px solid #eee; padding-bottom: 8px;
+            font-weight: bold; color: #2e7d32; border-bottom: 1px solid #eee; padding-bottom: 10px;
         }
         .editor-controls { display: flex; gap: 10px; align-items: center; }
         
         .btn-action {
-            flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #ddd;
-            background: #f9f9f9; color: #555; font-size: 14px; cursor: pointer;
+            flex: 1; padding: 12px; border-radius: 10px; border: 1px solid #ddd;
+            background: #f9f9f9; color: #555; font-size: 15px; cursor: pointer;
             display: flex; align-items: center; justify-content: center; gap: 5px;
         }
         .btn-action:active { background: #e0e0e0; }
         .btn-action.primary { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; }
 
-        /* 縮放滑桿 */
-        .zoom-wrapper { display: flex; align-items: center; gap: 10px; width: 100%; }
-        .zoom-label { font-size: 14px; color: #666; white-space: nowrap; width: 60px; }
+        .zoom-wrapper { display: flex; align-items: center; gap: 15px; width: 100%; }
+        .zoom-label { font-size: 14px; color: #666; white-space: nowrap; width: 60px; font-weight: bold; }
         input[type="range"] {
             flex: 1; -webkit-appearance: none; height: 6px; background: #ddd; border-radius: 3px;
         }
         input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
+            -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%;
             background: #4caf50; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
-        /* 主按鈕區 (下載) */
         .main-actions {
             width: 100%; max-width: 600px; display: flex; gap: 10px; margin-top: 10px;
         }
         .btn-download-large {
-            flex: 2; background-color: #4caf50; color: white; border: none; padding: 12px;
-            font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer;
+            flex: 2; background-color: #4caf50; color: white; border: none; padding: 14px;
+            font-size: 16px; font-weight: bold; border-radius: 10px; cursor: pointer;
             box-shadow: 0 4px 6px rgba(76, 175, 80, 0.3);
         }
         .btn-reset {
-            flex: 1; background-color: #fff; color: #666; border: 1px solid #ddd; padding: 12px;
-            font-size: 14px; border-radius: 8px; cursor: pointer;
+            flex: 1; background-color: #fff; color: #666; border: 1px solid #ddd; padding: 14px;
+            font-size: 14px; border-radius: 10px; cursor: pointer;
         }
 
-        /* 彈窗樣式 */
         .modal-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.85); z-index: 1000;
             justify-content: center; align-items: center; flex-direction: column; padding: 20px;
         }
         .modal-content {
-            background: white; padding: 15px; border-radius: 12px;
-            max-width: 90%; max-height: 80%; width: 100%; overflow: auto; text-align: center;
+            background: white; padding: 20px; border-radius: 16px;
+            max-width: 90%; max-height: 85%; width: 100%; overflow: auto; text-align: center;
         }
         .modal-content img { width: 100%; height: auto; border: 1px solid #ddd; display: block; margin: 0 auto; }
-        .btn-close { margin-top: 15px; background: #666; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; }
+        .btn-close { margin-top: 20px; background: #666; color: white; border: none; padding: 12px 30px; border-radius: 25px; cursor: pointer; font-size: 16px; }
 
         .frame-grid {
             display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 10px 0;
@@ -158,7 +156,7 @@
         <input type="file" id="upload2" accept="image/*">
     </div>
 
-    <div class="hint-overlay">👆 點擊灰色區域上傳 / 點擊照片編輯</div>
+    <div class="hint-overlay">👆 點擊預覽區上傳 / 點擊照片編輯</div>
 
     <div class="canvas-container">
         <canvas id="photoCanvas"></canvas>
@@ -172,7 +170,7 @@
     <div id="editor-panel" class="editor-panel">
         <div class="editor-header">
             <span id="editor-title">正在編輯</span>
-            <button style="border:none; background:none; font-size:20px; color:#999;" onclick="closeEditor()">✕</button>
+            <button style="border:none; background:none; font-size:24px; color:#999; padding:0 10px;" onclick="closeEditor()">✕</button>
         </div>
         
         <div class="zoom-wrapper">
@@ -188,7 +186,7 @@
 
     <div id="downloadModal" class="modal-overlay">
         <div class="modal-content">
-            <p style="color:#333; margin-bottom:10px;">請長按下方圖片儲存</p>
+            <p style="color:#333; margin-bottom:10px; font-weight:bold;">請長按下方圖片儲存</p>
             <img id="finalImage" src="">
             <button class="btn-close" onclick="closeModal('downloadModal')">關閉</button>
         </div>
@@ -196,8 +194,8 @@
 
     <div id="frameModal" class="modal-overlay">
         <div class="modal-content" style="max-width: 400px;">
-            <h3 style="margin:0 0 10px 0; color:#2e7d32;">選擇相框</h3>
-            <p id="frame-hint" style="font-size:12px; color:#666;"></p>
+            <h3 style="margin:0 0 15px 0; color:#2e7d32;">選擇相框</h3>
+            <p id="frame-hint" style="font-size:13px; color:#666; margin-bottom: 10px;"></p>
             <div id="frame-list" class="frame-grid"></div>
             <button class="btn-close" onclick="closeModal('frameModal')">取消</button>
         </div>
@@ -243,16 +241,16 @@
         const state = {
             img1: { obj: new Image(), loaded: false, x: 0, y: 0, baseScale: 1, zoom: 1, minX:0, maxX:0, minY:0, maxY:0, frameUrl: null },
             img2: { obj: new Image(), loaded: false, x: 0, y: 0, baseScale: 1, zoom: 1, minX:0, maxX:0, minY:0, maxY:0, frameUrl: null },
-            dragging: null, lastX: 0, lastY: 0, isDrag: false,
-            selectedKey: null // 當前選中的圖片 Key ('img1' or 'img2')
+            dragging: null, lastX: 0, lastY: 0, 
+            isDrag: false // 判斷是否為拖曳
         };
 
         const imageCache = {}; 
+        let activeEditKey = null;
 
         canvas.width = PIXEL_W;
         canvas.height = PIXEL_H;
 
-        // 預載
         function preloadFrames() {
             for (const category in FRAME_LIBRARY) {
                 FRAME_LIBRARY[category].forEach(frame => {
@@ -275,18 +273,19 @@
             state.img2.frameUrl = null;
         }
 
-        // --- 編輯器邏輯 ---
+        // --- 編輯與上傳邏輯 ---
         function selectImage(key) {
-            // 如果點擊的是還沒上傳的空位，直接觸發上傳
+            // 如果點擊空位，觸發上傳
             if (!state[key].loaded) {
-                document.getElementById(key === 'img1' ? 'upload1' : 'upload2').click();
+                // iOS 修復：強制觸發 click
+                const fileInput = document.getElementById(key === 'img1' ? 'upload1' : 'upload2');
+                fileInput.value = ''; // 清空以允許重複上傳同檔名
+                fileInput.click();
                 return;
             }
 
             // 選中圖片，開啟編輯面板
             state.selectedKey = key;
-            
-            // 更新面板 UI
             const panel = document.getElementById('editor-panel');
             const title = document.getElementById('editor-title');
             const slider = document.getElementById('zoom-slider');
@@ -299,17 +298,14 @@
                 labelText = "3R 照片";
             }
             title.innerText = "編輯: " + labelText;
-            
-            // 設定滑桿值
             slider.value = state[key].zoom;
             
-            // 綁定滑桿事件
             slider.oninput = function() {
                 updateZoom(key, this.value);
             };
 
             panel.classList.add('show');
-            draw(); // 重繪以顯示選取框
+            draw();
         }
 
         function closeEditor() {
@@ -320,15 +316,14 @@
 
         function triggerUploadCurrent() {
             if (state.selectedKey) {
-                const inputId = state.selectedKey === 'img1' ? 'upload1' : 'upload2';
-                document.getElementById(inputId).click();
+                const fileInput = document.getElementById(state.selectedKey === 'img1' ? 'upload1' : 'upload2');
+                fileInput.value = '';
+                fileInput.click();
             }
         }
 
         function openFrameSelectorCurrent() {
-            if (state.selectedKey) {
-                openFrameSelector(state.selectedKey);
-            }
+            if (state.selectedKey) openFrameSelector(state.selectedKey);
         }
 
         function updateZoom(key, value) {
@@ -342,6 +337,7 @@
         }
 
         function openFrameSelector(key) {
+            activeEditKey = key;
             const modal = document.getElementById('frameModal');
             const listContainer = document.getElementById('frame-list');
             const hint = document.getElementById('frame-hint');
@@ -377,8 +373,8 @@
         }
 
         function applyFrame(url) {
-            if (state.selectedKey) {
-                state[state.selectedKey].frameUrl = url;
+            if (activeEditKey) {
+                state[activeEditKey].frameUrl = url;
                 draw();
             }
             closeModal('frameModal');
@@ -490,7 +486,6 @@
                     ctx.restore();
                 }
                 
-                // 綠色選取框
                 if (state.selectedKey === slot.key) {
                     ctx.strokeStyle = '#4caf50'; ctx.lineWidth = 8;
                 } else {
@@ -508,18 +503,27 @@
             ctx.restore();
         }
 
-        // --- 點擊與拖曳 ---
+        // --- 點擊與拖曳 (標準化事件處理) ---
         function handleStart(x, y) {
-            // 如果點擊了編輯面板，不處理
-            if(y > window.innerHeight - 150 && document.getElementById('editor-panel').classList.contains('show')) return;
+            // 如果正在點擊底部面板，不處理 Canvas
+            const panel = document.getElementById('editor-panel');
+            if (panel.classList.contains('show')) {
+               const panelRect = panel.getBoundingClientRect();
+               if (y > panelRect.top) return; 
+            }
 
             const layout = getLayout();
             const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const realX = (x - rect.left) * scaleX;
-            const realY = (y - rect.top) * (canvas.height / rect.height);
             
-            state.isDrag = false; state.startX = x; state.startY = y;
+            // 計算 Canvas 內部座標
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const realX = (x - rect.left) * scaleX;
+            const realY = (y - rect.top) * scaleY;
+            
+            state.isDrag = false; 
+            state.startX = x; 
+            state.startY = y;
 
             let hitKey = null;
             layout.slots.forEach(slot => {
@@ -543,16 +547,17 @@
             const moveDist = Math.sqrt(Math.pow(x - state.startX, 2) + Math.pow(y - state.startY, 2));
             if (moveDist > 5) {
                 state.isDrag = true;
-                if (e.cancelable) e.preventDefault();
+                e.preventDefault(); // 確認是拖曳照片後，才阻止瀏覽器捲動
             }
 
             if (state.isDrag && state[state.dragging].loaded) {
-                // 如果開始拖曳，自動選中該圖片 (如果還沒選)
                 if (state.selectedKey !== state.dragging) selectImage(state.dragging);
 
                 const dx = x - state.lastX; const dy = y - state.lastY;
                 const s = state[state.dragging];
-                const scale = canvas.width / canvas.getBoundingClientRect().width;
+                const rect = canvas.getBoundingClientRect();
+                const scale = canvas.width / rect.width; // 假設等比縮放
+                
                 s.x += dx * scale; s.y += dy * scale;
                 if (s.x > s.maxX) s.x = s.maxX; if (s.x < s.minX) s.x = s.minX;
                 if (s.y > s.maxY) s.y = s.maxY; if (s.y < s.minY) s.y = s.minY;
@@ -562,19 +567,31 @@
 
         function handleEnd() { 
             if (!state.isDrag && state.dragging) {
-                // 單純點擊 -> 選取圖片 (或上傳)
+                // 單純點擊 -> 選取或上傳
                 selectImage(state.dragging);
             }
             state.dragging = null; 
         }
 
+        // Mouse Events
         canvas.addEventListener('mousedown', e => handleStart(e.clientX, e.clientY));
-        window.addEventListener('mousemove', e => { if(state.dragging) handleMove(e, e.clientX, e.clientY); });
+        window.addEventListener('mousemove', e => { 
+            if(state.dragging) handleMove(e, e.clientX, e.clientY); 
+        });
         window.addEventListener('mouseup', handleEnd);
-        canvas.addEventListener('touchstart', e => { const t = e.touches[0]; handleStart(t.clientX, t.clientY); }, {passive: false});
-        canvas.addEventListener('touchmove', e => { const t = e.touches[0]; handleMove(e, t.clientX, t.clientY); }, {passive: false});
+        
+        // Touch Events
+        canvas.addEventListener('touchstart', e => { 
+            const t = e.touches[0]; handleStart(t.clientX, t.clientY); 
+        }, {passive: false});
+        
+        canvas.addEventListener('touchmove', e => { 
+            const t = e.touches[0]; handleMove(e, t.clientX, t.clientY); 
+        }, {passive: false});
+        
         canvas.addEventListener('touchend', handleEnd);
 
+        // File Handler
         function handleFile(e, key) {
             const file = e.target.files[0];
             if(file){
@@ -582,20 +599,19 @@
                 reader.onload = e => { state[key].obj.src = e.target.result; state[key].obj.onload = () => { state[key].loaded = true; initImageState(key); }};
                 reader.readAsDataURL(file);
             }
-            // 上傳完自動開啟編輯
-            setTimeout(() => selectImage(key), 500);
+            setTimeout(() => selectImage(key), 300);
         }
         document.getElementById('upload1').addEventListener('change', e => handleFile(e, 'img1'));
         document.getElementById('upload2').addEventListener('change', e => handleFile(e, 'img2'));
 
+        // Download
         async function shareOrSave() {
-            // 先關閉編輯器去掉綠框
             closeEditor();
-            // 稍微延遲確保繪製完成
             setTimeout(async () => {
                 const hasImg1 = state.img1.loaded; const hasImg2 = state.img2.loaded;
                 const ready = currentSize === '2R' ? (hasImg1 || hasImg2) : hasImg1;
                 if (!ready) { alert("請先上傳照片！"); return; }
+                
                 if (navigator.share && navigator.canShare) {
                      canvas.toBlob(async (blob) => {
                         const file = new File([blob], "Greenery_Photo.jpg", { type: "image/jpeg" });
