@@ -19,11 +19,10 @@
             padding: 15px; margin: 0; color: #333;
             overscroll-behavior-y: auto; 
             padding-bottom: 80px;
-            user-select: none; /* 防止選取文字 */
+            user-select: none;
         }
         h2 { margin: 15px 0 10px 0; font-size: 1.4rem; color: #2e7d32; text-align: center; font-weight: bold; }
         
-        /* 模式切換按鈕 */
         .mode-switch {
             display: flex; gap: 8px;
             background: #e0e0e0; border-radius: 10px; padding: 5px;
@@ -40,23 +39,16 @@
             background: #fff; color: #2e7d32; border-color: #4caf50; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
-        /* 上傳控制區 */
         .controls {
             background: white; padding: 20px; border-radius: 16px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.06); width: 100%; max-width: 600px;
             margin-bottom: 20px; border-top: 4px solid #4caf50;
         }
         
-        .input-group { 
-            margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #f0f0f0; 
-            transition: background 0.3s;
-        }
+        .input-group { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #f0f0f0; transition: background 0.3s; }
         .input-group:last-child { border: none; padding-bottom: 0; margin-bottom: 0; }
         .hidden { display: none !important; }
-        
-        .input-group.active-group {
-            background-color: #e8f5e9; padding: 15px; border-radius: 10px; border-bottom: none;
-        }
+        .input-group.active-group { background-color: #e8f5e9; padding: 15px; border-radius: 10px; border-bottom: none; }
 
         .label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         label { font-weight: 600; color: #444; margin: 0; }
@@ -66,16 +58,13 @@
             border-radius: 20px; font-size: 0.85rem; cursor: pointer; color: #555;
             display: flex; align-items: center; gap: 4px; transition: 0.2s;
         }
-        .btn-frame.active {
-            background: #fff3cd; border-color: #ffc107; color: #856404; font-weight: bold;
-        }
+        .btn-frame.active { background: #fff3cd; border-color: #ffc107; color: #856404; font-weight: bold; }
 
         input[type="file"] {
             width: 100%; padding: 10px; border: 2px dashed #a5d6a7;
             border-radius: 8px; background: #f9fdfa; outline: none;
         }
 
-        /* 畫布容器 (相對定位，為了放滑桿) */
         .canvas-container {
             position: relative; width: 100%; max-width: 600px; margin-bottom: 20px;
             display: flex; justify-content: center; background: #e8f5e9; padding: 10px;
@@ -85,30 +74,38 @@
         canvas {
             width: 100% !important; height: auto !important; background: white;
             box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
-            cursor: pointer; touch-action: none; /* 關鍵：禁止瀏覽器預設行為以支援雙指縮放 */
+            cursor: pointer; 
+            /* 關鍵修改：允許垂直捲動，但由 JS 控制何時阻止 */
+            touch-action: pan-y; 
         }
 
-        /* --- 直式浮動滑桿 --- */
-        .vertical-slider-container {
-            position: absolute; right: -40px; top: 50%; transform: translateY(-50%);
-            height: 200px; width: 40px; 
-            display: none; /* 預設隱藏，選中圖片才顯示 */
-            align-items: center; justify-content: center;
-            background: rgba(255, 255, 255, 0.9); border-radius: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        /* --- 橫向浮動滑桿 (Horizontal Slider) --- */
+        .horizontal-slider-container {
+            position: absolute; 
+            bottom: 20px; /* 距離底部 */
+            left: 50%; transform: translateX(-50%); /* 水平置中 */
+            width: 80%; max-width: 300px; height: 50px;
+            display: none; /* 預設隱藏 */
+            align-items: center; justify-content: center; gap: 10px;
+            background: rgba(255, 255, 255, 0.95); border-radius: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             border: 1px solid #ddd;
-            z-index: 50;
+            z-index: 50; padding: 0 15px;
         }
-        .vertical-slider-container.show { display: flex; }
+        .horizontal-slider-container.show { display: flex; animation: slideUp 0.3s ease-out; }
 
-        /* 使用 transform 旋轉 input range 變成直的 */
-        input[type=range].vertical {
-            transform: rotate(-90deg);
-            width: 180px; height: 40px; /* 旋轉後 width 變成高度 */
-            background: transparent;
-            cursor: pointer;
-        }
+        @keyframes slideUp { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+        .slider-icon { font-size: 14px; color: #666; }
         
+        input[type=range] {
+            flex: 1; -webkit-appearance: none; height: 6px; background: #ddd; border-radius: 3px; outline: none;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%;
+            background: #4caf50; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
         .hint-overlay { 
             text-align: center; font-size: 0.9rem; color: #2e7d32; margin-bottom: 5px; font-weight: bold;
             pointer-events: none; 
@@ -139,17 +136,13 @@
         .modal-content img { width: 100%; height: auto; border: 1px solid #ddd; display: block; margin: 0 auto; }
         .btn-close { margin-top: 15px; background: #666; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; }
 
-        .frame-grid {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 10px 0;
-        }
+        .frame-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 10px 0; }
         .frame-item {
             border: 2px solid #eee; border-radius: 8px; padding: 5px; cursor: pointer;
             display: flex; flex-direction: column; align-items: center;
         }
         .frame-item:hover { border-color: #4caf50; background: #e8f5e9; }
-        .frame-item img {
-            width: 100%; height: auto; object-fit: contain; background: #ccc;
-        }
+        .frame-item img { width: 100%; height: auto; object-fit: contain; background: #ccc; }
         .frame-item span { font-size: 12px; margin-top: 5px; color: #555; }
         .frame-none {
             display: flex; align-items: center; justify-content: center; height: 80px;
@@ -195,8 +188,10 @@
     <div class="canvas-container">
         <canvas id="photoCanvas"></canvas>
         
-        <div id="zoom-container" class="vertical-slider-container">
-            <input type="range" class="vertical" id="zoom-slider" min="1" max="3" step="0.05" value="1">
+        <div id="zoom-container" class="horizontal-slider-container">
+            <span class="slider-icon">➖</span>
+            <input type="range" id="zoom-slider" min="1" max="3" step="0.05" value="1">
+            <span class="slider-icon">➕</span>
         </div>
     </div>
 
@@ -260,7 +255,6 @@
             img2: { obj: new Image(), loaded: false, x: 0, y: 0, baseScale: 1, zoom: 1, minX:0, maxX:0, minY:0, maxY:0, frameUrl: null },
             dragging: null, lastX: 0, lastY: 0, 
             isDrag: false, selectedKey: null,
-            // 雙指縮放變數
             initialPinchDist: 0, initialZoom: 1
         };
 
@@ -303,15 +297,14 @@
             const slider = document.getElementById('zoom-slider');
 
             if (key && state[key].loaded) {
-                // 1. 高亮上傳區
+                // 高亮上傳區
                 const groupId = key === 'img1' ? 'group1' : 'group2';
                 document.getElementById(groupId).classList.add('active-group');
                 
-                // 2. 顯示並更新側邊滑桿
+                // 顯示橫向滑桿
                 sliderContainer.classList.add('show');
                 slider.value = state[key].zoom;
                 
-                // 移除舊的 event listener，綁定新的
                 slider.oninput = null;
                 slider.oninput = function() {
                     updateZoom(key, this.value);
@@ -337,11 +330,12 @@
             if (!s.loaded) return;
             s.zoom = parseFloat(value);
             
-            // 重新計算邊界，確保縮放後不會跑版
+            state.selectedKey = key;
+            highlightGroup(key);
+
             const layout = getLayout();
             const slot = layout.slots.find(sl => sl.key === key);
             if(slot) calculateBounds(s, slot.w, slot.h);
-            
             draw();
         }
 
@@ -498,6 +492,7 @@
             const frameRatio = slot.w / slot.h;
             s.baseScale = (imgRatio > frameRatio) ? (slot.h / s.obj.height) : (slot.w / s.obj.width);
             s.zoom = 1; 
+            if(state.selectedKey === key) document.getElementById('zoom-slider').value = 1;
             calculateBounds(s, slot.w, slot.h);
             s.x = (s.minX + s.maxX) / 2; 
             s.y = (s.minY + s.maxY) / 2;
@@ -548,8 +543,11 @@
             ctx.restore();
         }
 
-        // --- 互動事件處理 (滑鼠 & 觸控) ---
+        // --- 觸控邏輯 (卷動修復 + 雙指縮放) ---
         function handleStart(x, y) {
+            // 如果點擊滑桿區域，不處理 Canvas 點擊
+            if (y > canvas.getBoundingClientRect().bottom - 60 && document.getElementById('zoom-container').classList.contains('show')) return;
+
             const layout = getLayout();
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
@@ -583,7 +581,8 @@
             const moveDist = Math.sqrt(Math.pow(x - state.startX, 2) + Math.pow(y - state.startY, 2));
             if (moveDist > 5) {
                 state.isDrag = true;
-                if (e.cancelable) e.preventDefault();
+                // 只有確認是拖曳照片且有照片時，才阻止卷動
+                if (e.cancelable && state[state.dragging].loaded) e.preventDefault();
             }
 
             if (state.isDrag && state[state.dragging].loaded) {
@@ -606,16 +605,20 @@
             state.dragging = null; 
         }
 
-        // --- 雙指縮放 (Pinch to Zoom) ---
+        // 雙指縮放
         function getDist(t1, t2) {
             return Math.sqrt(Math.pow(t1.clientX - t2.clientX, 2) + Math.pow(t1.clientY - t2.clientY, 2));
         }
+
+        canvas.addEventListener('mousedown', e => handleStart(e.clientX, e.clientY));
+        window.addEventListener('mousemove', e => { if(state.dragging) handleMove(e, e.clientX, e.clientY); });
+        window.addEventListener('mouseup', handleEnd);
 
         canvas.addEventListener('touchstart', e => { 
             if (e.touches.length === 2 && state.selectedKey) {
                 state.initialPinchDist = getDist(e.touches[0], e.touches[1]);
                 state.initialZoom = state[state.selectedKey].zoom;
-                e.preventDefault(); // 防止頁面縮放
+                e.preventDefault(); 
             } else {
                 const t = e.touches[0]; handleStart(t.clientX, t.clientY); 
             }
@@ -627,10 +630,8 @@
                 const dist = getDist(e.touches[0], e.touches[1]);
                 const scale = dist / state.initialPinchDist;
                 let newZoom = state.initialZoom * scale;
-                if(newZoom < 1) newZoom = 1; // 最小 1倍
-                if(newZoom > 3) newZoom = 3; // 最大 3倍
+                if(newZoom < 1) newZoom = 1; if(newZoom > 3) newZoom = 3;
                 
-                // 更新滑桿與畫面
                 const slider = document.getElementById('zoom-slider');
                 if(slider) slider.value = newZoom;
                 updateZoom(state.selectedKey, newZoom);
@@ -640,9 +641,6 @@
         }, {passive: false});
 
         canvas.addEventListener('touchend', handleEnd);
-        canvas.addEventListener('mousedown', e => handleStart(e.clientX, e.clientY));
-        window.addEventListener('mousemove', e => { if(state.dragging) handleMove(e, e.clientX, e.clientY); });
-        window.addEventListener('mouseup', handleEnd);
 
         function handleFile(e, key) {
             const file = e.target.files[0];
