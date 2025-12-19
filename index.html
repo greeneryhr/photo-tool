@@ -18,12 +18,11 @@
             display: flex; flex-direction: column; align-items: center;
             padding: 15px; margin: 0; color: #333;
             overscroll-behavior-y: auto; 
-            padding-bottom: 200px; /* 預留底部空間 */
+            padding-bottom: 50px;
             user-select: none;
         }
         h2 { margin: 15px 0 10px 0; font-size: 1.4rem; color: #2e7d32; text-align: center; font-weight: bold; }
         
-        /* 模式切換 */
         .mode-switch {
             display: flex; gap: 8px;
             background: #e0e0e0; border-radius: 10px; padding: 5px;
@@ -40,7 +39,6 @@
             background: #fff; color: #2e7d32; border-color: #4caf50; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
-        /* 控制區 */
         .controls {
             background: white; padding: 20px; border-radius: 16px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.06); width: 100%; max-width: 600px;
@@ -81,49 +79,38 @@
             cursor: pointer; touch-action: pan-y; 
         }
 
-        /* --- 懸浮島式底部 (Dock Style) --- */
-        .dock-footer {
-            position: fixed; 
-            bottom: 20px; /* 離底部一點距離 */
-            left: 50%; transform: translateX(-50%); /* 永遠置中 */
-            width: 95%; max-width: 600px; /* 限制最大寬度，電腦版不醜 */
-            background: rgba(255, 255, 255, 0.98);
-            box-shadow: 0 5px 25px rgba(0,0,0,0.15);
-            padding: 15px; 
-            z-index: 100;
-            display: flex; flex-direction: column; gap: 10px;
-            border-radius: 20px;
-            border: 1px solid #eee;
+        /* --- 底部靜態控制區 (Static Footer) --- */
+        .static-footer {
+            width: 100%; max-width: 600px;
+            display: flex; flex-direction: column; gap: 15px;
+            padding: 10px 0 30px 0;
         }
 
-        /* 拉桿區域 */
+        /* 縮放面板 (選中照片時顯示) */
         .zoom-panel {
             display: none; /* 預設隱藏 */
             align-items: center; justify-content: center; gap: 15px;
-            padding-bottom: 5px;
-            border-bottom: 1px solid #f0f0f0;
-            margin-bottom: 5px;
-            animation: slideDown 0.2s ease-out;
+            background: #fff; border: 1px solid #ddd;
+            padding: 10px 20px; border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            animation: fadeIn 0.3s ease;
         }
         .zoom-panel.show { display: flex; }
-        
-        @keyframes slideDown { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
         .slider-icon { font-size: 14px; color: #555; font-weight: bold; }
-        
         input[type=range] {
-            flex: 1; -webkit-appearance: none; height: 6px; background: #ddd; border-radius: 3px; outline: none;
+            flex: 1; -webkit-appearance: none; height: 6px; background: #ccc; border-radius: 3px; outline: none;
         }
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%;
             background: #4caf50; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 2px solid #fff;
         }
 
-        /* 按鈕群 */
+        /* 雙按鈕 */
         .footer-buttons {
             display: flex; gap: 10px; width: 100%;
         }
-
         .btn-footer {
             flex: 1; padding: 14px; border: none; border-radius: 12px;
             font-size: 16px; font-weight: bold; cursor: pointer;
@@ -205,7 +192,7 @@
         <canvas id="photoCanvas"></canvas>
     </div>
 
-    <div class="dock-footer">
+    <div class="static-footer">
         <div id="zoom-container" class="zoom-panel">
             <span class="slider-icon" style="font-size:13px; color:#2e7d32;">🔍 縮放</span>
             <span class="slider-icon">➖</span>
@@ -509,7 +496,7 @@
             draw();
         }
 
-        function draw() {
+        function draw(isExporting = false) {
             ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
             const layout = getLayout();
             
@@ -528,18 +515,21 @@
                         }
                     }
                 } else {
-                    ctx.save();
-                    ctx.fillStyle = '#f0f0f0'; ctx.fillRect(slot.x, slot.y, slot.w, slot.h);
-                    ctx.fillStyle = '#999'; ctx.font = 'bold 30px Arial';
-                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                    ctx.fillText('➕ 點擊上傳', slot.x + slot.w/2, slot.y + slot.h/2);
-                    ctx.restore();
+                    if (!isExporting) {
+                        ctx.save();
+                        ctx.fillStyle = '#f0f0f0'; ctx.fillRect(slot.x, slot.y, slot.w, slot.h);
+                        ctx.fillStyle = '#999'; ctx.font = 'bold 30px Arial';
+                        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                        ctx.fillText('➕ 點擊上傳', slot.x + slot.w/2, slot.y + slot.h/2);
+                        ctx.restore();
+                    }
                 }
                 
-                if (state.selectedKey === slot.key) {
+                // 邊框邏輯：匯出時不顯示綠框，只顯示細灰色裁切線
+                if (!isExporting && state.selectedKey === slot.key) {
                     ctx.strokeStyle = '#4caf50'; ctx.lineWidth = 8;
                 } else {
-                    ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 4;
+                    ctx.strokeStyle = '#cccccc'; ctx.lineWidth = isExporting ? 1 : 4; // 匯出時線條變細
                 }
                 ctx.strokeRect(slot.x, slot.y, slot.w, slot.h);
             });
@@ -572,7 +562,6 @@
                 }
             });
 
-            // 只有當圖片已載入，才允許拖曳 (不擋卷動)
             if (hitKey && state[hitKey].loaded) {
                 state.dragging = hitKey; state.lastX = x; state.lastY = y;
             } else { 
@@ -586,7 +575,7 @@
             const moveDist = Math.sqrt(Math.pow(x - state.startX, 2) + Math.pow(y - state.startY, 2));
             if (moveDist > 5) {
                 state.isDrag = true;
-                if (e.cancelable) e.preventDefault(); // 確定是拖曳圖片後，阻止卷動
+                if (e.cancelable) e.preventDefault(); 
             }
 
             if (state.isDrag && state[state.dragging].loaded) {
@@ -606,7 +595,6 @@
             state.dragging = null; 
         }
 
-        // --- 點擊事件 ---
         canvas.addEventListener('click', e => {
             if (state.isDrag) return; 
 
@@ -693,37 +681,51 @@
         document.getElementById('upload1').addEventListener('change', e => handleFile(e, 'img1'));
         document.getElementById('upload2').addEventListener('change', e => handleFile(e, 'img2'));
 
-        // 分享 (綠色)
         async function doShare() {
-            state.selectedKey = null; highlightGroup(null); draw();
+            const hasImg1 = state.img1.loaded; const hasImg2 = state.img2.loaded;
+            const ready = currentSize === '2R' ? (hasImg1 || hasImg2) : hasImg1;
+            if (!ready) { alert("請先上傳照片！"); return; }
+
+            // 匯出模式：清除綠框
+            draw(true);
+
             setTimeout(async () => {
-                const hasImg1 = state.img1.loaded; const hasImg2 = state.img2.loaded;
-                const ready = currentSize === '2R' ? (hasImg1 || hasImg2) : hasImg1;
-                if (!ready) { alert("請先上傳照片！"); return; }
                 if (navigator.share && navigator.canShare) {
                      canvas.toBlob(async (blob) => {
                         const file = new File([blob], "Greenery_Photo.jpg", { type: "image/jpeg" });
                         try {
                             if (navigator.canShare({ files: [file] })) {
-                                await navigator.share({ files: [file], title: '青苗琴行', text: '照片排版完成' });
+                                await navigator.share({ 
+                                    files: [file], 
+                                    title: '青苗琴行', 
+                                    text: '照片排版完成' 
+                                });
                             }
-                        } catch (error) { console.log("Share skipped"); }
+                        } catch (error) { console.log("Share cancelled or failed"); }
+                        // 恢復顯示綠框
+                        draw(false);
                     }, 'image/jpeg', 0.95);
-                } else { alert("瀏覽器不支援分享，請使用右側儲存按鈕"); }
+                } else {
+                    alert("您的瀏覽器不支援系統分享，請使用右側儲存按鈕。");
+                    draw(false);
+                }
             }, 100);
         }
 
-        // 儲存 (藍色)
         function doLegacySave() {
-            state.selectedKey = null; highlightGroup(null); draw();
+            const hasImg1 = state.img1.loaded; const hasImg2 = state.img2.loaded;
+            const ready = currentSize === '2R' ? (hasImg1 || hasImg2) : hasImg1;
+            if (!ready) { alert("請先上傳照片！"); return; }
+
+            // 匯出模式：清除綠框
+            draw(true);
+
             setTimeout(() => {
-                const hasImg1 = state.img1.loaded; const hasImg2 = state.img2.loaded;
-                const ready = currentSize === '2R' ? (hasImg1 || hasImg2) : hasImg1;
-                if (!ready) { alert("請先上傳照片！"); return; }
-                
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
                 document.getElementById('finalImage').src = dataUrl;
                 document.getElementById('downloadModal').style.display = 'flex';
+                // 恢復顯示綠框
+                draw(false);
             }, 100);
         }
 
