@@ -18,7 +18,7 @@
             display: flex; flex-direction: column; align-items: center;
             padding: 15px; margin: 0; color: #333;
             overscroll-behavior-y: auto; 
-            padding-bottom: 100px; /* 底部留白 */
+            padding-bottom: 50px;
             user-select: none;
         }
         h2 { margin: 15px 0 10px 0; font-size: 1.4rem; color: #2e7d32; text-align: center; font-weight: bold; }
@@ -80,9 +80,7 @@
         /* --- 底部靜態控制區 --- */
         .static-footer {
             width: 100%; max-width: 600px;
-            display: flex; flex-direction: column; 
-            /* 這裡增加了間距 */
-            gap: 30px; 
+            display: flex; flex-direction: column; gap: 30px; /* 拉開間距 */
             padding: 10px 0 50px 0;
         }
 
@@ -91,9 +89,7 @@
             display: none; /* 預設隱藏 */
             align-items: center; justify-content: center; gap: 20px;
             background: #fff; border: 1px solid #ddd;
-            /* 增加內距，讓手指更好按 */
-            padding: 15px 25px; 
-            border-radius: 16px;
+            padding: 15px 25px; border-radius: 16px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             animation: fadeIn 0.3s ease;
         }
@@ -101,7 +97,6 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
         .slider-icon { font-size: 16px; color: #555; font-weight: bold; }
-        
         input[type=range] {
             flex: 1; -webkit-appearance: none; height: 8px; background: #ddd; border-radius: 4px; outline: none;
         }
@@ -189,7 +184,7 @@
         </div>
     </div>
 
-    <div class="hint-overlay">👆 點擊預覽區上傳 / 拖曳調整</div>
+    <div class="hint-overlay">👆 點擊上傳 / 雙指縮放 / 拖曳調整</div>
 
     <div class="canvas-container">
         <canvas id="photoCanvas"></canvas>
@@ -268,6 +263,7 @@
             img2: { obj: new Image(), loaded: false, x: 0, y: 0, baseScale: 1, zoom: 1, minX:0, maxX:0, minY:0, maxY:0, frameUrl: null },
             dragging: null, lastX: 0, lastY: 0, 
             isDrag: false, selectedKey: null,
+            // 雙指縮放變數
             initialPinchDist: 0, initialZoom: 1
         };
 
@@ -528,6 +524,7 @@
                     }
                 }
                 
+                // 匯出時不顯示綠框
                 if (!isExporting && state.selectedKey === slot.key) {
                     ctx.strokeStyle = '#4caf50'; ctx.lineWidth = 8;
                 } else {
@@ -545,7 +542,7 @@
             ctx.restore();
         }
 
-        // --- 觸控邏輯 ---
+        // --- 觸控邏輯 (iOS 卷動 & 雙指縮放) ---
         function handleStart(x, y) {
             const layout = getLayout();
             const rect = canvas.getBoundingClientRect();
@@ -564,6 +561,7 @@
                 }
             });
 
+            // 只有當圖片「已載入」時，才設定 dragging，否則允許捲動
             if (hitKey && state[hitKey].loaded) {
                 state.dragging = hitKey; state.lastX = x; state.lastY = y;
             } else { 
@@ -577,7 +575,7 @@
             const moveDist = Math.sqrt(Math.pow(x - state.startX, 2) + Math.pow(y - state.startY, 2));
             if (moveDist > 5) {
                 state.isDrag = true;
-                if (e.cancelable) e.preventDefault(); 
+                if (e.cancelable) e.preventDefault(); // 阻止捲動
             }
 
             if (state.isDrag && state[state.dragging].loaded) {
@@ -597,6 +595,7 @@
             state.dragging = null; 
         }
 
+        // --- 點擊事件 ---
         canvas.addEventListener('click', e => {
             if (state.isDrag) return; 
 
@@ -628,12 +627,48 @@
             }
         });
 
+        // 雙指縮放
+        function getDist(t1, t2) {
+            return Math.sqrt(Math.pow(t1.clientX - t2.clientX, 2) + Math.pow(t1.clientY - t2.clientY, 2));
+        }
+
         canvas.addEventListener('mousedown', e => handleStart(e.clientX, e.clientY));
         window.addEventListener('mousemove', e => { if(state.dragging) handleMove(e, e.clientX, e.clientY); });
         window.addEventListener('mouseup', handleEnd);
 
-        canvas.addEventListener('touchstart', e => { const t = e.touches[0]; handleStart(t.clientX, t.clientY); }, {passive: false});
-        canvas.addEventListener('touchmove', e => { const t = e.touches[0]; handleMove(e, t.clientX, t.clientY); }, {passive: false});
+        // 觸控事件監聽 (Pinch Zoom + Drag)
+        canvas.addEventListener('touchstart', e => { 
+            // 如果是雙指
+            if (e.touches.length === 2 && state.selectedKey) {
+                state.initialPinchDist = getDist(e.touches[0], e.touches[1]);
+                state.initialZoom = state[state.selectedKey].zoom;
+                e.preventDefault(); // 阻止瀏覽器縮放
+            } else {
+                // 單指
+                const t = e.touches[0]; handleStart(t.clientX, t.clientY); 
+            }
+        }, {passive: false});
+
+        canvas.addEventListener('touchmove', e => { 
+            // 雙指縮放
+            if (e.touches.length === 2 && state.selectedKey) {
+                e.preventDefault();
+                const dist = getDist(e.touches[0], e.touches[1]);
+                if (state.initialPinchDist > 0) {
+                    const scale = dist / state.initialPinchDist;
+                    let newZoom = state.initialZoom * scale;
+                    if(newZoom < 1) newZoom = 1; if(newZoom > 3) newZoom = 3;
+                    
+                    const slider = document.getElementById('zoom-slider');
+                    if(slider) slider.value = newZoom;
+                    updateZoom(state.selectedKey, newZoom);
+                }
+            } else {
+                // 單指拖曳
+                const t = e.touches[0]; handleMove(e, t.clientX, t.clientY); 
+            }
+        }, {passive: false});
+
         canvas.addEventListener('touchend', handleEnd);
 
         function handleFile(e, key) {
@@ -654,10 +689,10 @@
         document.getElementById('upload1').addEventListener('change', e => handleFile(e, 'img1'));
         document.getElementById('upload2').addEventListener('change', e => handleFile(e, 'img2'));
 
-        // 分享 (綠色)
+        // 分享
         async function doShare() {
             state.selectedKey = null; highlightGroup(null); 
-            draw(true); // 匯出模式
+            draw(true); // 隱藏綠框
 
             setTimeout(async () => {
                 const hasImg1 = state.img1.loaded; const hasImg2 = state.img2.loaded;
@@ -671,8 +706,8 @@
                             if (navigator.canShare({ files: [file] })) {
                                 await navigator.share({ files: [file], title: '青苗琴行', text: '照片排版完成' });
                             }
-                        } catch (error) { console.log("Share cancelled or failed"); }
-                        draw(false); // 恢復
+                        } catch (error) { console.log("Share skipped"); }
+                        draw(false);
                     }, 'image/jpeg', 0.95);
                 } else { 
                     alert("瀏覽器不支援分享，請使用右側儲存按鈕");
@@ -681,10 +716,10 @@
             }, 100);
         }
 
-        // 儲存 (藍色)
+        // 儲存
         function doLegacySave() {
             state.selectedKey = null; highlightGroup(null); 
-            draw(true); // 匯出模式
+            draw(true); // 隱藏綠框
 
             setTimeout(() => {
                 const hasImg1 = state.img1.loaded; const hasImg2 = state.img2.loaded;
@@ -694,7 +729,7 @@
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
                 document.getElementById('finalImage').src = dataUrl;
                 document.getElementById('downloadModal').style.display = 'flex';
-                draw(false); // 恢復
+                draw(false);
             }, 100);
         }
 
@@ -704,3 +739,4 @@
     </script>
 </body>
 </html>
+
