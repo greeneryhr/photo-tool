@@ -8,171 +8,196 @@
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#43a047">
+    <meta name="theme-color" content="#00c853">
 
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", Roboto, sans-serif;
-            /* 視覺優化：溫暖的淺橙色背景 */
-            background-color: #fff3e0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            /* 視覺優化：更柔和的奶油暖色背景 */
+            background-color: #fff8e1;
             display: flex; flex-direction: column; align-items: center;
-            padding: 15px; margin: 0; color: #333;
+            padding: 20px 15px; margin: 0; color: #444;
             overscroll-behavior-y: auto; 
-            padding-bottom: 200px;
+            padding-bottom: 220px;
             user-select: none;
         }
 
-        /* 標題：深綠色 */
-        h2 { margin: 15px 0 15px 0; font-size: 1.5rem; color: #2e7d32; text-align: center; font-weight: 800; letter-spacing: 1px; }
-        
-        /* 模式切換區塊 */
-        .mode-switch {
-            display: flex; gap: 8px;
-            background: rgba(255, 255, 255, 0.6); /* 半透明白 */
-            border-radius: 12px; padding: 6px;
-            margin-bottom: 12px; width: 100%; max-width: 600px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        h2 { 
+            margin: 10px 0 20px 0; 
+            font-size: 1.4rem; 
+            color: #2e7d32; 
+            text-align: center; 
+            font-weight: 700; 
+            letter-spacing: 1px;
         }
-        .sub-switch { margin-top: -5px; margin-bottom: 20px; background: rgba(255, 255, 255, 0.4); }
+        
+        /* --- 膠囊型模式切換 (參考您的圖片風格) --- */
+        .mode-switch {
+            display: flex; gap: 0;
+            background: white; 
+            border-radius: 50px; /* 膠囊形狀 */
+            padding: 5px;
+            margin-bottom: 15px; width: 100%; max-width: 600px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            position: relative;
+        }
+        
+        .sub-switch { 
+            margin-top: -5px; margin-bottom: 25px; 
+            background: rgba(255, 255, 255, 0.6); 
+        }
 
         .mode-btn {
-            flex: 1; padding: 12px 5px; text-align: center; cursor: pointer;
-            border-radius: 10px; font-weight: bold; color: #666; transition: all 0.3s ease;
-            border: 1px solid transparent; font-size: 14px;
+            flex: 1; padding: 10px 0; text-align: center; cursor: pointer;
+            border-radius: 50px; /* 按鈕也是膠囊 */
+            font-weight: 600; color: #888; 
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            font-size: 14px;
+            position: relative;
+            z-index: 1;
         }
         
-        /* 視覺優化：漸層綠色按鈕 (選中狀態) */
+        /* 選中狀態：鮮豔漸層綠 + 陰影 */
         .mode-btn.active {
-            background: linear-gradient(135deg, #66bb6a, #43a047);
             color: white; 
-            box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
-            transform: translateY(-1px);
+            /* 參考圖片的鮮豔綠色漸層 */
+            background: linear-gradient(135deg, #00e676 0%, #00c853 100%);
+            box-shadow: 0 4px 12px rgba(0, 200, 83, 0.4);
+            font-weight: bold;
         }
 
-        /* 上傳控制區卡片 */
+        /* 控制面板卡片 */
         .controls {
-            background: white; padding: 20px; border-radius: 20px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.08); width: 100%; max-width: 600px;
+            background: white; padding: 25px 20px; border-radius: 24px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.06); width: 100%; max-width: 600px;
             margin-bottom: 25px; 
-            border-top: 5px solid #43a047; /* 頂部綠色條 */
         }
         
-        .input-group { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #f0f0f0; transition: background 0.3s; }
+        .input-group { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px dashed #eee; transition: background 0.3s; }
         .input-group:last-child { border: none; padding-bottom: 0; margin-bottom: 0; }
         .hidden { display: none !important; }
         
-        /* 選中時的高亮綠色 */
+        /* 高亮時給予柔和綠底 */
         .input-group.active-group { 
-            background-color: #e8f5e9; padding: 15px; border-radius: 12px; border-bottom: none; 
-            border: 1px solid #c8e6c9;
+            background-color: #f1f8e9; 
+            padding: 15px; margin: -10px -10px 20px -10px; /* 讓高亮區擴大一點 */
+            border-radius: 16px; border-bottom: none; 
         }
 
-        .label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        label { font-weight: 700; color: #2e7d32; margin: 0; font-size: 0.95rem; }
+        .label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        label { font-weight: 700; color: #558b2f; margin: 0; font-size: 0.95rem; }
         
         .btn-frame {
-            background: #fff; border: 1px solid #ddd; padding: 6px 14px;
-            border-radius: 20px; font-size: 0.85rem; cursor: pointer; color: #555;
+            background: #fff; border: 1px solid #e0e0e0; padding: 6px 14px;
+            border-radius: 20px; font-size: 0.85rem; cursor: pointer; color: #666;
             display: flex; align-items: center; gap: 6px; transition: 0.2s;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
         .btn-frame.active { 
-            background: #e8f5e9; border-color: #4caf50; color: #2e7d32; font-weight: bold; 
+            background: #fff3cd; border-color: #ffb300; color: #bf360c; font-weight: bold; 
         }
 
         input[type="file"] {
-            width: 100%; padding: 10px; border: 2px dashed #a5d6a7;
-            border-radius: 10px; background: #fafafa; outline: none;
-            color: #555;
+            width: 100%; padding: 12px; 
+            border: 2px dashed #b9f6ca;
+            border-radius: 12px; background: #fafafa; outline: none;
+            color: #555; font-size: 14px;
         }
 
         .canvas-container {
             position: relative; width: 100%; max-width: 600px; margin-bottom: 20px;
             display: flex; justify-content: center; 
-            background: white; /* 畫布背景改白，更乾淨 */
-            padding: 10px;
-            border-radius: 12px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08); /* 柔和陰影 */
+            background: white; padding: 12px;
+            border-radius: 16px; 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
         }
 
         canvas {
             width: 100% !important; height: auto !important; background: white;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
             cursor: pointer; touch-action: pan-y; 
         }
 
-        /* 底部靜態控制區 */
+        /* --- 底部控制區 --- */
         .static-footer {
             width: 100%; max-width: 600px;
-            display: flex; flex-direction: column; gap: 25px;
+            display: flex; flex-direction: column; gap: 20px;
             padding: 10px 0 50px 0;
         }
 
-        /* 縮放面板 */
+        /* 縮放面板：更圓潤 */
         .zoom-panel {
             display: none; 
-            align-items: center; justify-content: center; gap: 20px;
-            background: white; border: 1px solid #e0e0e0;
-            padding: 15px 25px; border-radius: 16px;
+            align-items: center; justify-content: center; gap: 15px;
+            background: white; border: 1px solid #f0f0f0;
+            padding: 12px 20px; border-radius: 50px; /* 膠囊狀 */
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
             animation: fadeIn 0.3s ease;
         }
         .zoom-panel.show { display: flex; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
-        .slider-icon { font-size: 16px; color: #43a047; font-weight: bold; } /* 綠色 icon */
+        .slider-icon { font-size: 14px; color: #43a047; font-weight: bold; }
         
-        /* 視覺優化：綠色系拉桿 */
         input[type=range] {
-            flex: 1; -webkit-appearance: none; height: 8px; background: #c8e6c9; border-radius: 4px; outline: none;
+            flex: 1; -webkit-appearance: none; height: 6px; background: #e0e0e0; border-radius: 3px; outline: none;
         }
         input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%;
-            background: #43a047; cursor: pointer; 
-            box-shadow: 0 2px 6px rgba(67, 160, 71, 0.4); border: 3px solid #fff;
+            -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%;
+            background: #00e676; /* 亮綠色滑塊 */
+            cursor: pointer; 
+            box-shadow: 0 2px 5px rgba(0, 230, 118, 0.4); border: 2px solid #fff;
         }
 
-        /* 雙按鈕 */
+        /* 雙按鈕區 */
         .footer-buttons {
             display: flex; gap: 15px; width: 100%;
         }
         
-        /* 視覺優化：統一漸層綠色按鈕 */
         .btn-footer {
-            flex: 1; padding: 16px; border: none; border-radius: 16px;
-            font-size: 17px; font-weight: bold; cursor: pointer;
+            flex: 1; padding: 15px; border: none; border-radius: 16px;
+            font-size: 16px; font-weight: bold; cursor: pointer;
             display: flex; align-items: center; justify-content: center; gap: 8px;
-            transition: all 0.2s;
-            color: white;
-            background: linear-gradient(135deg, #66bb6a, #2e7d32); /* 漸層綠 */
-            box-shadow: 0 6px 15px rgba(46, 125, 50, 0.3);
+            transition: all 0.2s; color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
-        .btn-footer:active { transform: scale(0.96); box-shadow: 0 3px 8px rgba(46, 125, 50, 0.2); }
 
-        /* 提示文字：綠色 */
+        /* 綠色按鈕：系統分享 */
+        .btn-share {
+            background: linear-gradient(135deg, #66bb6a, #2e7d32);
+            box-shadow: 0 6px 15px rgba(46, 125, 50, 0.25);
+        }
+        
+        /* 藍色按鈕：儲存圖片 (區分顏色) */
+        .btn-save {
+            background: linear-gradient(135deg, #42a5f5, #1565c0); /* 海洋藍 */
+            box-shadow: 0 6px 15px rgba(21, 101, 192, 0.25);
+        }
+
+        .btn-footer:active { transform: scale(0.97); opacity: 0.9; }
+
         .hint-overlay { 
-            text-align: center; font-size: 0.95rem; color: #2e7d32; margin-bottom: 8px; font-weight: bold;
+            text-align: center; font-size: 0.9rem; color: #558b2f; margin-bottom: 8px; font-weight: bold;
             pointer-events: none; opacity: 0.8;
         }
 
-        /* Modal 美化 */
+        /* Modal */
         .modal-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.85); z-index: 1000;
+            background: rgba(0, 0, 0, 0.7); z-index: 1000;
             justify-content: center; align-items: center; flex-direction: column; padding: 20px;
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(4px);
         }
         .modal-content {
-            background: white; padding: 25px; border-radius: 20px;
+            background: white; padding: 25px; border-radius: 24px;
             max-width: 90%; max-height: 85%; width: 100%; overflow: auto; text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
         }
-        .modal-content img { width: 100%; height: auto; border: 1px solid #ddd; display: block; margin: 0 auto; border-radius: 8px; }
+        .modal-content img { width: 100%; height: auto; border: 1px solid #eee; display: block; margin: 0 auto; border-radius: 12px; }
         .btn-close { 
-            margin-top: 20px; background: #555; color: white; border: none; 
-            padding: 12px 35px; border-radius: 30px; cursor: pointer; font-size: 16px; font-weight: bold;
+            margin-top: 20px; background: #eceff1; color: #546e7a; border: none; 
+            padding: 12px 30px; border-radius: 30px; cursor: pointer; font-size: 15px; font-weight: bold;
         }
 
         .frame-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 10px 0; }
@@ -180,12 +205,12 @@
             border: 2px solid #eee; border-radius: 12px; padding: 5px; cursor: pointer;
             display: flex; flex-direction: column; align-items: center; transition: 0.2s;
         }
-        .frame-item:hover { border-color: #4caf50; background: #e8f5e9; transform: translateY(-2px); }
+        .frame-item:hover { border-color: #00e676; background: #e8f5e9; transform: translateY(-2px); }
         .frame-item img { width: 100%; height: auto; object-fit: contain; }
-        .frame-item span { font-size: 12px; margin-top: 5px; color: #555; font-weight: bold; }
+        .frame-item span { font-size: 12px; margin-top: 5px; color: #666; font-weight: 500; }
         .frame-none {
             display: flex; align-items: center; justify-content: center; height: 80px;
-            background: #eee; color: #666; font-size: 12px; width: 100%; border-radius: 8px;
+            background: #f5f5f5; color: #999; font-size: 12px; width: 100%; border-radius: 8px;
         }
 
     </style>
@@ -238,10 +263,10 @@
         </div>
 
         <div class="footer-buttons">
-            <button class="btn-footer" onclick="doShare()">
+            <button class="btn-footer btn-share" onclick="doShare()">
                 <span>📤</span> 系統分享
             </button>
-            <button class="btn-footer" onclick="doLegacySave()">
+            <button class="btn-footer btn-save" onclick="doLegacySave()">
                 <span>💾</span> 儲存圖片
             </button>
         </div>
@@ -249,7 +274,7 @@
 
     <div id="downloadModal" class="modal-overlay">
         <div class="modal-content">
-            <p style="color:#2e7d32; margin-bottom:15px; font-weight:bold; font-size:1.2rem;">👇 請長按下方圖片儲存</p>
+            <p style="color:#2e7d32; margin-bottom:15px; font-weight:bold; font-size:1.1rem;">👇 請長按下方圖片儲存</p>
             <img id="finalImage" src="">
             <button class="btn-close" onclick="closeModal('downloadModal')">關閉</button>
         </div>
@@ -459,7 +484,7 @@
             const label1 = document.getElementById('label1');
             const label2 = document.getElementById('label2');
 
-            // 統一所有模式 min=1
+            // 統一所有模式 min=1 (填滿)
             document.getElementById('zoom-slider').min = "1";
 
             if (currentSize === '2R') {
@@ -567,6 +592,7 @@
             const currentW = s.obj.width * s.baseScale * s.zoom;
             const currentH = s.obj.height * s.baseScale * s.zoom;
             
+            // Cover 模式：禁止露白邊
             s.minX = frameW - currentW; 
             s.maxX = 0;
             s.minY = frameH - currentH;
@@ -838,8 +864,6 @@
     </script>
 </body>
 </html>
-
-
 
 
 
