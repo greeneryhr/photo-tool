@@ -343,7 +343,6 @@
             highlightGroup(key);
             const layout = getLayout();
             const slot = layout.slots.find(sl => sl.key === key);
-            // 注意：這裡使用 realW/realH 計算，確保縮放是對應標準尺寸
             if(slot) calculateBounds(s, slot.realW, slot.realH);
             draw();
         }
@@ -511,26 +510,20 @@
             }
         }
 
-        // --- 關鍵修正：邊界計算邏輯 ---
         function calculateBounds(s, frameW, frameH) {
             const currentW = s.obj.width * s.baseScale * s.zoom;
             const currentH = s.obj.height * s.baseScale * s.zoom;
             
-            // 正常情況 (zoom >= 1)：圖片必須填滿框
-            // 但現在 zoom 可以 < 1，所以如果圖片比框小，我們要讓它置中
-            
+            // 自動置中邏輯 (當圖片比框小時)
             if (currentW < frameW) {
-                // 圖片寬度小於框寬度：強制置中
                 s.minX = (frameW - currentW) / 2;
                 s.maxX = s.minX; 
             } else {
-                // 圖片寬度大於框寬度：限制移動範圍
                 s.minX = frameW - currentW;
                 s.maxX = 0;
             }
 
             if (currentH < frameH) {
-                // 圖片高度小於框高度：強制置中
                 s.minY = (frameH - currentH) / 2;
                 s.maxY = s.minY;
             } else {
@@ -538,7 +531,6 @@
                 s.maxY = 0;
             }
 
-            // 修正位置 (如果超出範圍，拉回來)
             if (s.x < s.minX) s.x = s.minX;
             if (s.x > s.maxX) s.x = s.maxX;
             if (s.y < s.minY) s.y = s.minY;
@@ -576,6 +568,12 @@
                     ctx.beginPath();
                     ctx.rect(slot.x + offsetX, slot.y + offsetY, slot.realW, slot.realH);
                     ctx.clip();
+
+                    // --- 關鍵修改：加入橙色背景 ---
+                    ctx.fillStyle = '#ff9800'; // 橙色
+                    ctx.fillRect(slot.x + offsetX, slot.y + offsetY, slot.realW, slot.realH);
+                    // ---------------------------
+
                     const drawW = s.obj.width * s.baseScale * s.zoom;
                     const drawH = s.obj.height * s.baseScale * s.zoom;
                     ctx.drawImage(s.obj, slot.x + offsetX + s.x, slot.y + offsetY + s.y, drawW, drawH);
@@ -664,7 +662,6 @@
                 const scale = canvas.width / canvas.getBoundingClientRect().width;
                 s.x += dx * scale; s.y += dy * scale;
                 
-                // 使用修正後的 calculateBounds 邏輯 (支援小圖置中)
                 const layout = getLayout();
                 const slot = layout.slots.find(sl => sl.key === state.dragging);
                 if(slot) calculateBounds(s, slot.realW, slot.realH);
@@ -733,6 +730,7 @@
                 if (state.initialPinchDist > 0) {
                     const scale = dist / state.initialPinchDist;
                     let newZoom = state.initialZoom * scale;
+                    // 允許縮小到 0.5
                     if(newZoom < 0.5) newZoom = 0.5; if(newZoom > 3) newZoom = 3;
                     
                     const slider = document.getElementById('zoom-slider');
@@ -812,4 +810,5 @@
     </script>
 </body>
 </html>
+
 
