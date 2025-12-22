@@ -8,79 +8,105 @@
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#4caf50">
+    <meta name="theme-color" content="#43a047">
 
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", Roboto, sans-serif;
-            background-color: #f0f7f4;
+            /* 視覺優化：溫暖的淺橙色背景 */
+            background-color: #fff3e0;
             display: flex; flex-direction: column; align-items: center;
             padding: 15px; margin: 0; color: #333;
             overscroll-behavior-y: auto; 
             padding-bottom: 200px;
             user-select: none;
         }
-        h2 { margin: 15px 0 10px 0; font-size: 1.4rem; color: #2e7d32; text-align: center; font-weight: bold; }
+
+        /* 標題：深綠色 */
+        h2 { margin: 15px 0 15px 0; font-size: 1.5rem; color: #2e7d32; text-align: center; font-weight: 800; letter-spacing: 1px; }
         
+        /* 模式切換區塊 */
         .mode-switch {
             display: flex; gap: 8px;
-            background: #e0e0e0; border-radius: 10px; padding: 5px;
-            margin-bottom: 10px; width: 100%; max-width: 600px;
+            background: rgba(255, 255, 255, 0.6); /* 半透明白 */
+            border-radius: 12px; padding: 6px;
+            margin-bottom: 12px; width: 100%; max-width: 600px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
-        .sub-switch { margin-top: -5px; margin-bottom: 20px; background: #dcedc8; }
+        .sub-switch { margin-top: -5px; margin-bottom: 20px; background: rgba(255, 255, 255, 0.4); }
 
         .mode-btn {
             flex: 1; padding: 12px 5px; text-align: center; cursor: pointer;
-            border-radius: 8px; font-weight: bold; color: #666; transition: 0.2s;
-            border: 2px solid transparent; font-size: 15px;
+            border-radius: 10px; font-weight: bold; color: #666; transition: all 0.3s ease;
+            border: 1px solid transparent; font-size: 14px;
         }
+        
+        /* 視覺優化：漸層綠色按鈕 (選中狀態) */
         .mode-btn.active {
-            background: #fff; color: #2e7d32; border-color: #4caf50; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            background: linear-gradient(135deg, #66bb6a, #43a047);
+            color: white; 
+            box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
+            transform: translateY(-1px);
         }
 
+        /* 上傳控制區卡片 */
         .controls {
-            background: white; padding: 20px; border-radius: 16px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.06); width: 100%; max-width: 600px;
-            margin-bottom: 20px; border-top: 4px solid #4caf50;
+            background: white; padding: 20px; border-radius: 20px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08); width: 100%; max-width: 600px;
+            margin-bottom: 25px; 
+            border-top: 5px solid #43a047; /* 頂部綠色條 */
         }
         
         .input-group { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #f0f0f0; transition: background 0.3s; }
         .input-group:last-child { border: none; padding-bottom: 0; margin-bottom: 0; }
         .hidden { display: none !important; }
-        .input-group.active-group { background-color: #e8f5e9; padding: 15px; border-radius: 10px; border-bottom: none; }
+        
+        /* 選中時的高亮綠色 */
+        .input-group.active-group { 
+            background-color: #e8f5e9; padding: 15px; border-radius: 12px; border-bottom: none; 
+            border: 1px solid #c8e6c9;
+        }
 
         .label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        label { font-weight: 600; color: #444; margin: 0; }
+        label { font-weight: 700; color: #2e7d32; margin: 0; font-size: 0.95rem; }
         
         .btn-frame {
-            background: #f0f0f0; border: 1px solid #ccc; padding: 6px 12px;
+            background: #fff; border: 1px solid #ddd; padding: 6px 14px;
             border-radius: 20px; font-size: 0.85rem; cursor: pointer; color: #555;
-            display: flex; align-items: center; gap: 4px; transition: 0.2s;
+            display: flex; align-items: center; gap: 6px; transition: 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
-        .btn-frame.active { background: #fff3cd; border-color: #ffc107; color: #856404; font-weight: bold; }
+        .btn-frame.active { 
+            background: #e8f5e9; border-color: #4caf50; color: #2e7d32; font-weight: bold; 
+        }
 
         input[type="file"] {
             width: 100%; padding: 10px; border: 2px dashed #a5d6a7;
-            border-radius: 8px; background: #f9fdfa; outline: none;
+            border-radius: 10px; background: #fafafa; outline: none;
+            color: #555;
         }
 
         .canvas-container {
             position: relative; width: 100%; max-width: 600px; margin-bottom: 20px;
-            display: flex; justify-content: center; background: #e8f5e9; padding: 10px;
-            border-radius: 8px; border: 1px solid #c8e6c9;
+            display: flex; justify-content: center; 
+            background: white; /* 畫布背景改白，更乾淨 */
+            padding: 10px;
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08); /* 柔和陰影 */
         }
 
         canvas {
             width: 100% !important; height: auto !important; background: white;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
             cursor: pointer; touch-action: pan-y; 
         }
 
         /* 底部靜態控制區 */
         .static-footer {
             width: 100%; max-width: 600px;
-            display: flex; flex-direction: column; gap: 30px;
+            display: flex; flex-direction: column; gap: 25px;
             padding: 10px 0 50px 0;
         }
 
@@ -88,66 +114,78 @@
         .zoom-panel {
             display: none; 
             align-items: center; justify-content: center; gap: 20px;
-            background: #fff; border: 1px solid #ddd;
+            background: white; border: 1px solid #e0e0e0;
             padding: 15px 25px; border-radius: 16px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
             animation: fadeIn 0.3s ease;
         }
         .zoom-panel.show { display: flex; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
-        .slider-icon { font-size: 16px; color: #555; font-weight: bold; }
+        .slider-icon { font-size: 16px; color: #43a047; font-weight: bold; } /* 綠色 icon */
+        
+        /* 視覺優化：綠色系拉桿 */
         input[type=range] {
-            flex: 1; -webkit-appearance: none; height: 8px; background: #ddd; border-radius: 4px; outline: none;
+            flex: 1; -webkit-appearance: none; height: 8px; background: #c8e6c9; border-radius: 4px; outline: none;
         }
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%;
-            background: #4caf50; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.3); border: 2px solid #fff;
+            background: #43a047; cursor: pointer; 
+            box-shadow: 0 2px 6px rgba(67, 160, 71, 0.4); border: 3px solid #fff;
         }
 
         /* 雙按鈕 */
         .footer-buttons {
             display: flex; gap: 15px; width: 100%;
         }
+        
+        /* 視覺優化：統一漸層綠色按鈕 */
         .btn-footer {
-            flex: 1; padding: 16px; border: none; border-radius: 14px;
+            flex: 1; padding: 16px; border: none; border-radius: 16px;
             font-size: 17px; font-weight: bold; cursor: pointer;
             display: flex; align-items: center; justify-content: center; gap: 8px;
-            transition: transform 0.1s;
+            transition: all 0.2s;
+            color: white;
+            background: linear-gradient(135deg, #66bb6a, #2e7d32); /* 漸層綠 */
+            box-shadow: 0 6px 15px rgba(46, 125, 50, 0.3);
         }
-        .btn-share { background-color: #4caf50; color: white; box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3); }
-        .btn-save { background-color: #2196f3; color: white; box-shadow: 0 4px 10px rgba(33, 150, 243, 0.3); }
-        .btn-footer:active { transform: scale(0.96); opacity: 0.9; }
+        .btn-footer:active { transform: scale(0.96); box-shadow: 0 3px 8px rgba(46, 125, 50, 0.2); }
 
+        /* 提示文字：綠色 */
         .hint-overlay { 
-            text-align: center; font-size: 0.9rem; color: #2e7d32; margin-bottom: 5px; font-weight: bold;
-            pointer-events: none; 
+            text-align: center; font-size: 0.95rem; color: #2e7d32; margin-bottom: 8px; font-weight: bold;
+            pointer-events: none; opacity: 0.8;
         }
 
-        /* Modal */
+        /* Modal 美化 */
         .modal-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.85); z-index: 1000;
             justify-content: center; align-items: center; flex-direction: column; padding: 20px;
+            backdrop-filter: blur(5px);
         }
         .modal-content {
-            background: white; padding: 20px; border-radius: 16px;
+            background: white; padding: 25px; border-radius: 20px;
             max-width: 90%; max-height: 85%; width: 100%; overflow: auto; text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
-        .modal-content img { width: 100%; height: auto; border: 1px solid #ddd; display: block; margin: 0 auto; }
-        .btn-close { margin-top: 20px; background: #666; color: white; border: none; padding: 12px 30px; border-radius: 25px; cursor: pointer; font-size: 16px; }
+        .modal-content img { width: 100%; height: auto; border: 1px solid #ddd; display: block; margin: 0 auto; border-radius: 8px; }
+        .btn-close { 
+            margin-top: 20px; background: #555; color: white; border: none; 
+            padding: 12px 35px; border-radius: 30px; cursor: pointer; font-size: 16px; font-weight: bold;
+        }
 
         .frame-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 10px 0; }
         .frame-item {
-            border: 2px solid #eee; border-radius: 8px; padding: 5px; cursor: pointer;
-            display: flex; flex-direction: column; align-items: center;
+            border: 2px solid #eee; border-radius: 12px; padding: 5px; cursor: pointer;
+            display: flex; flex-direction: column; align-items: center; transition: 0.2s;
         }
-        .frame-item:hover { border-color: #4caf50; background: #e8f5e9; }
-        .frame-item img { width: 100%; height: auto; object-fit: contain; background: #ccc; }
-        .frame-item span { font-size: 12px; margin-top: 5px; color: #555; }
+        .frame-item:hover { border-color: #4caf50; background: #e8f5e9; transform: translateY(-2px); }
+        .frame-item img { width: 100%; height: auto; object-fit: contain; }
+        .frame-item span { font-size: 12px; margin-top: 5px; color: #555; font-weight: bold; }
         .frame-none {
             display: flex; align-items: center; justify-content: center; height: 80px;
-            background: #eee; color: #666; font-size: 12px; width: 100%;
+            background: #eee; color: #666; font-size: 12px; width: 100%; border-radius: 8px;
         }
 
     </style>
@@ -193,17 +231,17 @@
 
     <div class="static-footer">
         <div id="zoom-container" class="zoom-panel">
-            <span class="slider-icon" style="color:#2e7d32;">🔍 縮放</span>
+            <span class="slider-icon">🔍 縮放</span>
             <span class="slider-icon">➖</span>
             <input type="range" id="zoom-slider" min="1" max="3" step="0.05" value="1">
             <span class="slider-icon">➕</span>
         </div>
 
         <div class="footer-buttons">
-            <button class="btn-footer btn-share" onclick="doShare()">
+            <button class="btn-footer" onclick="doShare()">
                 <span>📤</span> 系統分享
             </button>
-            <button class="btn-footer btn-save" onclick="doLegacySave()">
+            <button class="btn-footer" onclick="doLegacySave()">
                 <span>💾</span> 儲存圖片
             </button>
         </div>
@@ -211,7 +249,7 @@
 
     <div id="downloadModal" class="modal-overlay">
         <div class="modal-content">
-            <p style="color:#333; margin-bottom:10px; font-weight:bold; font-size:1.1rem;">👇 請長按下方圖片儲存</p>
+            <p style="color:#2e7d32; margin-bottom:15px; font-weight:bold; font-size:1.2rem;">👇 請長按下方圖片儲存</p>
             <img id="finalImage" src="">
             <button class="btn-close" onclick="closeModal('downloadModal')">關閉</button>
         </div>
@@ -219,8 +257,8 @@
 
     <div id="frameModal" class="modal-overlay">
         <div class="modal-content" style="max-width: 400px;">
-            <h3 style="margin:0 0 10px 0; color:#2e7d32;">選擇相框</h3>
-            <p id="frame-hint" style="font-size:12px; color:#666;"></p>
+            <h3 style="margin:0 0 15px 0; color:#2e7d32;">選擇相框</h3>
+            <p id="frame-hint" style="font-size:12px; color:#666; margin-bottom:10px;"></p>
             <div id="frame-list" class="frame-grid"></div>
             <button class="btn-close" onclick="closeModal('frameModal')">取消</button>
         </div>
@@ -521,24 +559,19 @@
                 const y = (cH - slotH) / 2;
                 return { slots: [ { key: 'img1', x: x, y: y, w: slotW, h: slotH, realW: realW, realH: realH } ] };
             } else {
-                // 4R
                 return { slots: [ { key: 'img1', x: 0, y: 0, w: cW, h: cH, realW: cW, realH: cH } ] };
             }
         }
 
-        // --- 邊界計算 (Cover 模式，禁止露白邊) ---
         function calculateBounds(s, frameW, frameH) {
             const currentW = s.obj.width * s.baseScale * s.zoom;
             const currentH = s.obj.height * s.baseScale * s.zoom;
             
-            // 限制移動範圍：只能在圖片大於相框的部分移動
-            // 因為 minZoom = 1，所以 currentW/H 永遠 >= frameW/H
             s.minX = frameW - currentW; 
             s.maxX = 0;
             s.minY = frameH - currentH;
             s.maxY = 0;
             
-            // 強制拉回邊界內
             if (s.x < s.minX) s.x = s.minX;
             if (s.x > s.maxX) s.x = s.maxX;
             if (s.y < s.minY) s.y = s.minY;
@@ -553,12 +586,10 @@
 
             const imgRatio = s.obj.width / s.obj.height;
             const frameRatio = slot.realW / slot.realH;
-            // Cover 模式縮放計算
             s.baseScale = (imgRatio > frameRatio) ? (slot.realH / s.obj.height) : (slot.realW / s.obj.width);
             s.zoom = 1; 
             if(state.selectedKey === key) document.getElementById('zoom-slider').value = 1;
             calculateBounds(s, slot.realW, slot.realH);
-            // 預設置中
             s.x = (s.minX + s.maxX) / 2; 
             s.y = (s.minY + s.maxY) / 2;
             draw();
@@ -807,6 +838,7 @@
     </script>
 </body>
 </html>
+
 
 
 
