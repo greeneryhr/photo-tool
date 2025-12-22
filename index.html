@@ -18,7 +18,7 @@
             display: flex; flex-direction: column; align-items: center;
             padding: 15px; margin: 0; color: #333;
             overscroll-behavior-y: auto; 
-            padding-bottom: 50px;
+            padding-bottom: 200px;
             user-select: none;
         }
         h2 { margin: 15px 0 10px 0; font-size: 1.4rem; color: #2e7d32; text-align: center; font-weight: bold; }
@@ -77,16 +77,16 @@
             cursor: pointer; touch-action: pan-y; 
         }
 
-        /* --- 底部靜態控制區 --- */
+        /* 底部靜態控制區 */
         .static-footer {
             width: 100%; max-width: 600px;
-            display: flex; flex-direction: column; gap: 30px; /* 拉開間距 */
+            display: flex; flex-direction: column; gap: 30px;
             padding: 10px 0 50px 0;
         }
 
         /* 縮放面板 */
         .zoom-panel {
-            display: none; /* 預設隱藏 */
+            display: none; 
             align-items: center; justify-content: center; gap: 20px;
             background: #fff; border: 1px solid #ddd;
             padding: 15px 25px; border-radius: 16px;
@@ -184,7 +184,7 @@
         </div>
     </div>
 
-    <div class="hint-overlay">👆 點擊上傳 / 雙指縮放 / 拖曳調整</div>
+    <div class="hint-overlay">👆 點擊預覽區上傳 / 拖曳調整</div>
 
     <div class="canvas-container">
         <canvas id="photoCanvas"></canvas>
@@ -226,6 +226,30 @@
     </div>
 
     <script>
+        // --- 1. 高畫質 600 DPI (解決像素不足) ---
+        const DPI = 600; 
+        const MM_TO_INCH = 0.0393701;
+
+        // 4R 底紙 (10.2cm x 15.2cm)
+        const PAPER_4R_W_MM = 102; 
+        const PAPER_4R_H_MM = 152;
+
+        // --- 2. 機器尺寸 vs 標準尺寸 (解決尺寸不準) ---
+        // PRINTER_2R: 機器列印範圍 (6.6cm x 9.2cm) - 會被填滿
+        const PRINTER_2R_W_MM = 66; 
+        const PRINTER_2R_H_MM = 92;
+
+        // REAL_2R: 標準 2R 成品尺寸 (6.35cm x 8.89cm) - 我們要保留的內容
+        const REAL_2R_W_MM = 63.5;
+        const REAL_2R_H_MM = 88.9;
+        
+        // 3R 標準尺寸 (8.9cm x 12.7cm)
+        const PHOTO_3R_W_MM = 89;
+        const PHOTO_3R_H_MM = 127;
+
+        const PAPER_W = Math.round(PAPER_4R_W_MM * MM_TO_INCH * DPI);
+        const PAPER_H = Math.round(PAPER_4R_H_MM * MM_TO_INCH * DPI);
+
         const FRAME_LIBRARY = {
             r2_portrait: [
                 { name: "青苗 A", url: "https://cdn.prod.website-files.com/68706ab53a6b0f51d8f998af/694398382a80b3f334b17196_2b5e59a2e52edeb1b5fec9a142439443_Frame1-2RV-01-01.png" },
@@ -247,13 +271,9 @@
 
         const canvas = document.getElementById('photoCanvas');
         const ctx = canvas.getContext('2d');
-        const DPI = 300; 
-        const MM_TO_INCH = 0.0393701;
-        
-        const BASE_WIDTH_MM = 100;
-        const BASE_HEIGHT_MM = 148;
-        const PIXEL_W = Math.round(BASE_WIDTH_MM * MM_TO_INCH * DPI);
-        const PIXEL_H = Math.round(BASE_HEIGHT_MM * MM_TO_INCH * DPI);
+
+        canvas.width = PAPER_W;
+        canvas.height = PAPER_H;
 
         let currentSize = '2R'; 
         let currentOri = 'V';   
@@ -263,15 +283,11 @@
             img2: { obj: new Image(), loaded: false, x: 0, y: 0, baseScale: 1, zoom: 1, minX:0, maxX:0, minY:0, maxY:0, frameUrl: null },
             dragging: null, lastX: 0, lastY: 0, 
             isDrag: false, selectedKey: null,
-            // 雙指縮放變數
             initialPinchDist: 0, initialZoom: 1
         };
 
         const imageCache = {}; 
         let activeEditKey = null;
-
-        canvas.width = PIXEL_W;
-        canvas.height = PIXEL_H;
 
         function preloadFrames() {
             for (const category in FRAME_LIBRARY) {
@@ -332,7 +348,8 @@
             highlightGroup(key);
             const layout = getLayout();
             const slot = layout.slots.find(sl => sl.key === key);
-            if(slot) calculateBounds(s, slot.w, slot.h);
+            // 縮放邊界判定使用 RealW/RealH
+            if(slot) calculateBounds(s, slot.realW, slot.realH);
             draw();
         }
 
@@ -408,10 +425,12 @@
                 group2.classList.remove('hidden');
                 
                 if (currentOri === 'V') {
-                    canvas.width = PIXEL_H; canvas.height = PIXEL_W;
+                    // 2R 直向 (左右排列) -> 4R 橫向畫布
+                    canvas.width = PAPER_H; canvas.height = PAPER_W;
                     label1.innerText = "📷 左邊照片:"; label2.innerText = "📷 右邊照片:";
                 } else {
-                    canvas.width = PIXEL_W; canvas.height = PIXEL_H;
+                    // 2R 橫向 (上下排列) -> 4R 直向畫布
+                    canvas.width = PAPER_W; canvas.height = PAPER_H;
                     label1.innerText = "📷 上方照片:"; label2.innerText = "📷 下方照片:";
                 }
             } else {
@@ -419,10 +438,10 @@
                 group2.classList.add('hidden');
                 
                 if (currentOri === 'V') {
-                    canvas.width = PIXEL_W; canvas.height = PIXEL_H;
+                    canvas.width = PAPER_W; canvas.height = PAPER_H;
                     label1.innerText = "📷 3R 直向照片:";
                 } else {
-                    canvas.width = PIXEL_H; canvas.height = PIXEL_W;
+                    canvas.width = PAPER_H; canvas.height = PAPER_W;
                     label1.innerText = "📷 3R 橫向照片:";
                 }
             }
@@ -439,29 +458,61 @@
             const cW = canvas.width;
             const cH = canvas.height;
 
+            // slotW/H = 機器輸出尺寸 (較大)
+            // realW/H = 實際成品尺寸 (較小, 2R/3R標準)
+
             if (currentSize === '2R') {
                 if (currentOri === 'V') {
-                    const pW = 63.5 * MM_TO_INCH * DPI; 
-                    const pH = 88.9 * MM_TO_INCH * DPI;
-                    const gap = 10 * MM_TO_INCH * DPI; 
-                    const totalW = (pW * 2) + gap;
+                    // 2R 直向 on 4R 橫向
+                    const slotW = Math.round(PRINTER_2R_W_MM * MM_TO_INCH * DPI); // 66mm
+                    const slotH = Math.round(PRINTER_2R_H_MM * MM_TO_INCH * DPI); // 92mm
+                    const realW = Math.round(REAL_2R_W_MM * MM_TO_INCH * DPI); // 63.5mm
+                    const realH = Math.round(REAL_2R_H_MM * MM_TO_INCH * DPI); // 88.9mm
+                    
+                    const gap = Math.round(10 * MM_TO_INCH * DPI); 
+                    const totalW = (slotW * 2) + gap;
                     const marginX = (cW - totalW) / 2;
-                    const y = (cH - pH) / 2;
-                    return { slots: [ { key: 'img1', x: marginX, y: y, w: pW, h: pH }, { key: 'img2', x: marginX + pW + gap, y: y, w: pW, h: pH } ] };
+                    const y = (cH - slotH) / 2;
+                    
+                    return { 
+                        slots: [ 
+                            { key: 'img1', x: marginX, y: y, w: slotW, h: slotH, realW: realW, realH: realH }, 
+                            { key: 'img2', x: marginX + slotW + gap, y: y, w: slotW, h: slotH, realW: realW, realH: realH } 
+                        ] 
+                    };
                 } else {
-                    const pW = 88.9 * MM_TO_INCH * DPI; 
-                    const pH = 63.5 * MM_TO_INCH * DPI;
-                    const marginX = (cW - pW) / 2;
-                    const y1 = (cH / 2 - pH) / 2 + 20; 
-                    const y2 = (cH / 2) + (cH / 2 - pH) / 2 - 20;
-                    return { slots: [ { key: 'img1', x: marginX, y: y1, w: pW, h: pH }, { key: 'img2', x: marginX, y: y2, w: pW, h: pH } ] };
+                    // 2R 橫向 on 4R 直向
+                    const slotW = Math.round(PRINTER_2R_H_MM * MM_TO_INCH * DPI); 
+                    const slotH = Math.round(PRINTER_2R_W_MM * MM_TO_INCH * DPI); 
+                    const realW = Math.round(REAL_2R_H_MM * MM_TO_INCH * DPI); 
+                    const realH = Math.round(REAL_2R_W_MM * MM_TO_INCH * DPI); 
+                    
+                    const marginX = (cW - slotW) / 2;
+                    const gap = Math.round(10 * MM_TO_INCH * DPI);
+                    const totalH = (slotH * 2) + gap;
+                    const startY = (cH - totalH) / 2;
+
+                    return { 
+                        slots: [ 
+                            { key: 'img1', x: marginX, y: startY, w: slotW, h: slotH, realW: realW, realH: realH }, 
+                            { key: 'img2', x: marginX, y: startY + slotH + gap, w: slotW, h: slotH, realW: realW, realH: realH } 
+                        ] 
+                    };
                 }
             } else {
-                let pW, pH;
-                if (currentOri === 'V') { pW = 89 * MM_TO_INCH * DPI; pH = 127 * MM_TO_INCH * DPI; } 
-                else { pW = 127 * MM_TO_INCH * DPI; pH = 89 * MM_TO_INCH * DPI; }
-                const x = (cW - pW) / 2; const y = (cH - pH) / 2;
-                return { slots: [ { key: 'img1', x: x, y: y, w: pW, h: pH } ] };
+                // 3R (單張置中)
+                // 假設 3R 也需要類似處理，這裡先鎖定標準尺寸，Slot = 4R Canvas 
+                // 這樣印出來就是 4R 中間一張 3R，周圍白邊
+                let realW, realH;
+                if (currentOri === 'V') { 
+                    realW = Math.round(PHOTO_3R_W_MM * MM_TO_INCH * DPI); 
+                    realH = Math.round(PHOTO_3R_H_MM * MM_TO_INCH * DPI); 
+                } else { 
+                    realW = Math.round(PHOTO_3R_H_MM * MM_TO_INCH * DPI); 
+                    realH = Math.round(PHOTO_3R_W_MM * MM_TO_INCH * DPI); 
+                }
+                // Slot 設為整個畫布，內容設為 Real Size -> 自動置中
+                return { slots: [ { key: 'img1', x: 0, y: 0, w: cW, h: cH, realW: realW, realH: realH } ] };
             }
         }
 
@@ -485,11 +536,12 @@
             if (!slot) return;
 
             const imgRatio = s.obj.width / s.obj.height;
-            const frameRatio = slot.w / slot.h;
-            s.baseScale = (imgRatio > frameRatio) ? (slot.h / s.obj.height) : (slot.w / s.obj.width);
+            // 縮放基準是 Real Size (成品尺寸)
+            const frameRatio = slot.realW / slot.realH;
+            s.baseScale = (imgRatio > frameRatio) ? (slot.realH / s.obj.height) : (slot.realW / s.obj.width);
             s.zoom = 1; 
             if(state.selectedKey === key) document.getElementById('zoom-slider').value = 1;
-            calculateBounds(s, slot.w, slot.h);
+            calculateBounds(s, slot.realW, slot.realH);
             s.x = (s.minX + s.maxX) / 2; 
             s.y = (s.minY + s.maxY) / 2;
             draw();
@@ -501,48 +553,60 @@
             
             layout.slots.forEach(slot => {
                 const s = state[slot.key];
-                
+                // 計算偏移量，讓成品尺寸居中於機器尺寸內
+                const offsetX = (slot.w - slot.realW) / 2;
+                const offsetY = (slot.h - slot.realH) / 2;
+
                 if (s.loaded) {
-                    drawImageClipped(s, slot.x, slot.y, slot.w, slot.h);
+                    ctx.save();
+                    ctx.beginPath();
+                    // 裁切範圍為 Real Size
+                    ctx.rect(slot.x + offsetX, slot.y + offsetY, slot.realW, slot.realH);
+                    ctx.clip();
+                    const drawW = s.obj.width * s.baseScale * s.zoom;
+                    const drawH = s.obj.height * s.baseScale * s.zoom;
+                    ctx.drawImage(s.obj, slot.x + offsetX + s.x, slot.y + offsetY + s.y, drawW, drawH);
+                    ctx.restore();
+
                     if (s.frameUrl) {
                         const cachedImg = imageCache[s.frameUrl];
                         if (cachedImg && cachedImg.complete) {
-                             ctx.drawImage(cachedImg, slot.x, slot.y, slot.w, slot.h);
+                             ctx.drawImage(cachedImg, slot.x + offsetX, slot.y + offsetY, slot.realW, slot.realH);
                         } else {
                             const fImg = new Image(); fImg.crossOrigin = "anonymous"; fImg.src = s.frameUrl;
-                            ctx.drawImage(fImg, slot.x, slot.y, slot.w, slot.h);
+                            ctx.drawImage(fImg, slot.x + offsetX, slot.y + offsetY, slot.realW, slot.realH);
                         }
                     }
                 } else {
                     if (!isExporting) {
                         ctx.save();
                         ctx.fillStyle = '#f0f0f0'; ctx.fillRect(slot.x, slot.y, slot.w, slot.h);
-                        ctx.fillStyle = '#999'; ctx.font = 'bold 30px Arial';
+                        
+                        // 畫出成品範圍虛線
+                        ctx.strokeStyle = '#bbb'; ctx.lineWidth = 2; ctx.setLineDash([10,10]);
+                        ctx.strokeRect(slot.x + offsetX, slot.y + offsetY, slot.realW, slot.realH);
+                        ctx.setLineDash([]);
+
+                        ctx.fillStyle = '#999'; ctx.font = 'bold 80px Arial';
                         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                        ctx.fillText('➕ 點擊上傳', slot.x + slot.w/2, slot.y + slot.h/2);
+                        ctx.fillText('➕', slot.x + slot.w/2, slot.y + slot.h/2);
                         ctx.restore();
                     }
                 }
                 
-                // 匯出時不顯示綠框
                 if (!isExporting && state.selectedKey === slot.key) {
-                    ctx.strokeStyle = '#4caf50'; ctx.lineWidth = 8;
+                    ctx.strokeStyle = '#4caf50'; ctx.lineWidth = 15;
+                    ctx.strokeRect(slot.x, slot.y, slot.w, slot.h); // 綠框選中整個 Slot
                 } else {
-                    ctx.strokeStyle = '#cccccc'; ctx.lineWidth = isExporting ? 1 : 4;
+                    if(!isExporting) {
+                        ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 4;
+                        ctx.strokeRect(slot.x, slot.y, slot.w, slot.h);
+                    }
                 }
-                ctx.strokeRect(slot.x, slot.y, slot.w, slot.h);
             });
         }
 
-        function drawImageClipped(s, fx, fy, fw, fh) {
-            ctx.save(); ctx.beginPath(); ctx.rect(fx, fy, fw, fh); ctx.clip();
-            const drawW = s.obj.width * s.baseScale * s.zoom;
-            const drawH = s.obj.height * s.baseScale * s.zoom;
-            ctx.drawImage(s.obj, fx + s.x, fy + s.y, drawW, drawH);
-            ctx.restore();
-        }
-
-        // --- 觸控邏輯 (iOS 卷動 & 雙指縮放) ---
+        // --- 觸控邏輯 ---
         function handleStart(x, y) {
             const layout = getLayout();
             const rect = canvas.getBoundingClientRect();
@@ -561,7 +625,6 @@
                 }
             });
 
-            // 只有當圖片「已載入」時，才設定 dragging，否則允許捲動
             if (hitKey && state[hitKey].loaded) {
                 state.dragging = hitKey; state.lastX = x; state.lastY = y;
             } else { 
@@ -575,7 +638,7 @@
             const moveDist = Math.sqrt(Math.pow(x - state.startX, 2) + Math.pow(y - state.startY, 2));
             if (moveDist > 5) {
                 state.isDrag = true;
-                if (e.cancelable) e.preventDefault(); // 阻止捲動
+                if (e.cancelable) e.preventDefault(); 
             }
 
             if (state.isDrag && state[state.dragging].loaded) {
@@ -595,7 +658,6 @@
             state.dragging = null; 
         }
 
-        // --- 點擊事件 ---
         canvas.addEventListener('click', e => {
             if (state.isDrag) return; 
 
@@ -627,7 +689,6 @@
             }
         });
 
-        // 雙指縮放
         function getDist(t1, t2) {
             return Math.sqrt(Math.pow(t1.clientX - t2.clientX, 2) + Math.pow(t1.clientY - t2.clientY, 2));
         }
@@ -636,21 +697,17 @@
         window.addEventListener('mousemove', e => { if(state.dragging) handleMove(e, e.clientX, e.clientY); });
         window.addEventListener('mouseup', handleEnd);
 
-        // 觸控事件監聽 (Pinch Zoom + Drag)
         canvas.addEventListener('touchstart', e => { 
-            // 如果是雙指
             if (e.touches.length === 2 && state.selectedKey) {
                 state.initialPinchDist = getDist(e.touches[0], e.touches[1]);
                 state.initialZoom = state[state.selectedKey].zoom;
-                e.preventDefault(); // 阻止瀏覽器縮放
+                e.preventDefault(); 
             } else {
-                // 單指
                 const t = e.touches[0]; handleStart(t.clientX, t.clientY); 
             }
         }, {passive: false});
 
         canvas.addEventListener('touchmove', e => { 
-            // 雙指縮放
             if (e.touches.length === 2 && state.selectedKey) {
                 e.preventDefault();
                 const dist = getDist(e.touches[0], e.touches[1]);
@@ -664,7 +721,6 @@
                     updateZoom(state.selectedKey, newZoom);
                 }
             } else {
-                // 單指拖曳
                 const t = e.touches[0]; handleMove(e, t.clientX, t.clientY); 
             }
         }, {passive: false});
@@ -689,10 +745,9 @@
         document.getElementById('upload1').addEventListener('change', e => handleFile(e, 'img1'));
         document.getElementById('upload2').addEventListener('change', e => handleFile(e, 'img2'));
 
-        // 分享
         async function doShare() {
             state.selectedKey = null; highlightGroup(null); 
-            draw(true); // 隱藏綠框
+            draw(true); 
 
             setTimeout(async () => {
                 const hasImg1 = state.img1.loaded; const hasImg2 = state.img2.loaded;
@@ -708,7 +763,7 @@
                             }
                         } catch (error) { console.log("Share skipped"); }
                         draw(false);
-                    }, 'image/jpeg', 0.95);
+                    }, 'image/jpeg', 1.0); 
                 } else { 
                     alert("瀏覽器不支援分享，請使用右側儲存按鈕");
                     draw(false);
@@ -716,17 +771,16 @@
             }, 100);
         }
 
-        // 儲存
         function doLegacySave() {
             state.selectedKey = null; highlightGroup(null); 
-            draw(true); // 隱藏綠框
+            draw(true); 
 
             setTimeout(() => {
                 const hasImg1 = state.img1.loaded; const hasImg2 = state.img2.loaded;
                 const ready = currentSize === '2R' ? (hasImg1 || hasImg2) : hasImg1;
                 if (!ready) { alert("請先上傳照片！"); draw(false); return; }
                 
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+                const dataUrl = canvas.toDataURL('image/jpeg', 1.0); 
                 document.getElementById('finalImage').src = dataUrl;
                 document.getElementById('downloadModal').style.display = 'flex';
                 draw(false);
