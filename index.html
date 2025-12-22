@@ -159,6 +159,7 @@
     <div class="mode-switch">
         <div class="mode-btn active" id="btn-size-2r" onclick="selectSize('2R')">2R (雙張)</div>
         <div class="mode-btn" id="btn-size-3r" onclick="selectSize('3R')">3R (單張)</div>
+        <div class="mode-btn" id="btn-size-4r" onclick="selectSize('4R')">4R (全頁)</div>
     </div>
 
     <div id="orientation-area" class="mode-switch sub-switch">
@@ -261,7 +262,8 @@
             r3_landscape: [
                 { name: "青苗 A", url: "https://cdn.prod.website-files.com/68706ab53a6b0f51d8f998af/6943a48f2ddd4c77f886fbf5_Frame1-3RH.png" },
                 { name: "青苗 B", url: "https://cdn.prod.website-files.com/68706ab53a6b0f51d8f998af/6943a48f7ebcb6d579a7fa95_Frame2-3RH.png" }
-            ]
+            ],
+            r4_portrait: [], r4_landscape: []
         };
 
         const canvas = document.getElementById('photoCanvas');
@@ -317,7 +319,8 @@
 
             if (key && state[key].loaded) {
                 const groupId = key === 'img1' ? 'group1' : 'group2';
-                document.getElementById(groupId).classList.add('active-group');
+                const el = document.getElementById(groupId);
+                if(el) el.classList.add('active-group');
                 
                 sliderContainer.classList.add('show');
                 slider.value = state[key].zoom;
@@ -343,7 +346,6 @@
             highlightGroup(key);
             const layout = getLayout();
             const slot = layout.slots.find(sl => sl.key === key);
-            // 注意：恢復使用原來的邊界限制
             if(slot) calculateBounds(s, slot.realW, slot.realH);
             draw();
         }
@@ -364,9 +366,12 @@
             if (currentSize === '2R') {
                 if (currentOri === 'V') { category = 'r2_portrait'; catName = '2R 直向'; }
                 else { category = 'r2_landscape'; catName = '2R 橫向'; }
-            } else {
+            } else if (currentSize === '3R') {
                 if (currentOri === 'V') { category = 'r3_portrait'; catName = '3R 直向'; }
                 else { category = 'r3_landscape'; catName = '3R 橫向'; }
+            } else { 
+                if (currentOri === 'V') { category = 'r4_portrait'; catName = '4R 直向'; }
+                else { category = 'r4_landscape'; catName = '4R 橫向'; }
             }
 
             hint.innerText = `適用於: ${catName}`;
@@ -405,6 +410,7 @@
         function updateUI() {
             document.getElementById('btn-size-2r').className = currentSize === '2R' ? 'mode-btn active' : 'mode-btn';
             document.getElementById('btn-size-3r').className = currentSize === '3R' ? 'mode-btn active' : 'mode-btn';
+            document.getElementById('btn-size-4r').className = currentSize === '4R' ? 'mode-btn active' : 'mode-btn';
             
             const btnV = document.getElementById('btn-ori-v');
             const btnH = document.getElementById('btn-ori-h');
@@ -415,10 +421,12 @@
             const label1 = document.getElementById('label1');
             const label2 = document.getElementById('label2');
 
+            // 統一所有模式 min=1
+            document.getElementById('zoom-slider').min = "1";
+
             if (currentSize === '2R') {
                 btnH.innerText = "橫向/相架用 ↔";
                 group2.classList.remove('hidden');
-                
                 if (currentOri === 'V') {
                     canvas.width = PAPER_H; canvas.height = PAPER_W;
                     label1.innerText = "📷 左邊照片:"; label2.innerText = "📷 右邊照片:";
@@ -426,16 +434,25 @@
                     canvas.width = PAPER_W; canvas.height = PAPER_H;
                     label1.innerText = "📷 上方照片:"; label2.innerText = "📷 下方照片:";
                 }
-            } else {
+            } else if (currentSize === '3R') {
                 btnH.innerText = "橫向 ↔";
                 group2.classList.add('hidden');
-                
                 if (currentOri === 'V') {
                     canvas.width = PAPER_W; canvas.height = PAPER_H;
                     label1.innerText = "📷 3R 直向照片:";
                 } else {
                     canvas.width = PAPER_H; canvas.height = PAPER_W;
                     label1.innerText = "📷 3R 橫向照片:";
+                }
+            } else { 
+                btnH.innerText = "橫向 ↔";
+                group2.classList.add('hidden');
+                if (currentOri === 'V') {
+                    canvas.width = PAPER_W; canvas.height = PAPER_H;
+                    label1.innerText = "📷 4R 全頁照片:";
+                } else {
+                    canvas.width = PAPER_H; canvas.height = PAPER_W;
+                    label1.innerText = "📷 4R 全頁照片:";
                 }
             }
 
@@ -453,7 +470,6 @@
 
             if (currentSize === '2R') {
                 if (currentOri === 'V') {
-                    // 2R 直向
                     const slotW = Math.round(PRINTER_2R_W_MM * MM_TO_INCH * DPI); 
                     const slotH = Math.round(PRINTER_2R_H_MM * MM_TO_INCH * DPI);
                     const realW = Math.round(REAL_2R_W_MM * MM_TO_INCH * DPI);
@@ -471,7 +487,6 @@
                         ] 
                     };
                 } else {
-                    // 2R 橫向
                     const slotW = Math.round(PRINTER_2R_H_MM * MM_TO_INCH * DPI); 
                     const slotH = Math.round(PRINTER_2R_W_MM * MM_TO_INCH * DPI); 
                     const realW = Math.round(REAL_2R_H_MM * MM_TO_INCH * DPI); 
@@ -489,10 +504,8 @@
                         ] 
                     };
                 }
-            } else {
-                // 3R Logic (同樣應用縮小補償)
+            } else if (currentSize === '3R') {
                 let slotW, slotH, realW, realH;
-
                 if (currentOri === 'V') {
                     slotW = Math.round(PRINTER_3R_W_MM * MM_TO_INCH * DPI); 
                     slotH = Math.round(PRINTER_3R_H_MM * MM_TO_INCH * DPI); 
@@ -506,24 +519,26 @@
                 }
                 const x = (cW - slotW) / 2;
                 const y = (cH - slotH) / 2;
-                
                 return { slots: [ { key: 'img1', x: x, y: y, w: slotW, h: slotH, realW: realW, realH: realH } ] };
+            } else {
+                // 4R
+                return { slots: [ { key: 'img1', x: 0, y: 0, w: cW, h: cH, realW: cW, realH: cH } ] };
             }
         }
 
-        // --- 關鍵修正：邊界計算邏輯 (強制填滿) ---
+        // --- 邊界計算 (Cover 模式，禁止露白邊) ---
         function calculateBounds(s, frameW, frameH) {
             const currentW = s.obj.width * s.baseScale * s.zoom;
             const currentH = s.obj.height * s.baseScale * s.zoom;
             
-            // 圖片永遠不小於框 (因為 Zoom >= 1)
-            // 限制移動範圍，確保不會露出白邊
+            // 限制移動範圍：只能在圖片大於相框的部分移動
+            // 因為 minZoom = 1，所以 currentW/H 永遠 >= frameW/H
             s.minX = frameW - currentW; 
             s.maxX = 0;
             s.minY = frameH - currentH;
             s.maxY = 0;
             
-            // 修正位置
+            // 強制拉回邊界內
             if (s.x < s.minX) s.x = s.minX;
             if (s.x > s.maxX) s.x = s.maxX;
             if (s.y < s.minY) s.y = s.minY;
@@ -538,10 +553,12 @@
 
             const imgRatio = s.obj.width / s.obj.height;
             const frameRatio = slot.realW / slot.realH;
+            // Cover 模式縮放計算
             s.baseScale = (imgRatio > frameRatio) ? (slot.realH / s.obj.height) : (slot.realW / s.obj.width);
             s.zoom = 1; 
             if(state.selectedKey === key) document.getElementById('zoom-slider').value = 1;
             calculateBounds(s, slot.realW, slot.realH);
+            // 預設置中
             s.x = (s.minX + s.maxX) / 2; 
             s.y = (s.minY + s.maxY) / 2;
             draw();
@@ -559,9 +576,9 @@
                 if (s.loaded) {
                     ctx.save();
                     ctx.beginPath();
-                    // 裁切範圍為標準成品尺寸
                     ctx.rect(slot.x + offsetX, slot.y + offsetY, slot.realW, slot.realH);
                     ctx.clip();
+
                     const drawW = s.obj.width * s.baseScale * s.zoom;
                     const drawH = s.obj.height * s.baseScale * s.zoom;
                     ctx.drawImage(s.obj, slot.x + offsetX + s.x, slot.y + offsetY + s.y, drawW, drawH);
@@ -581,9 +598,11 @@
                         ctx.save();
                         ctx.fillStyle = '#f0f0f0'; ctx.fillRect(slot.x, slot.y, slot.w, slot.h);
                         
-                        ctx.strokeStyle = '#bbb'; ctx.lineWidth = 2; ctx.setLineDash([10,10]);
-                        ctx.strokeRect(slot.x + offsetX, slot.y + offsetY, slot.realW, slot.realH);
-                        ctx.setLineDash([]);
+                        if(currentSize !== '4R') {
+                            ctx.strokeStyle = '#bbb'; ctx.lineWidth = 2; ctx.setLineDash([10,10]);
+                            ctx.strokeRect(slot.x + offsetX, slot.y + offsetY, slot.realW, slot.realH);
+                            ctx.setLineDash([]);
+                        }
 
                         ctx.fillStyle = '#999'; ctx.font = 'bold 80px Arial';
                         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -604,11 +623,7 @@
             });
         }
 
-        // --- 觸控邏輯 ---
         function handleStart(x, y) {
-            // 防止點擊滑桿區域時觸發 Canvas 點擊
-            if (y > canvas.getBoundingClientRect().bottom && document.getElementById('zoom-container').classList.contains('show')) return;
-
             const layout = getLayout();
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
@@ -635,7 +650,6 @@
 
         function handleMove(e, x, y) {
             if (!state.dragging) return;
-            
             const moveDist = Math.sqrt(Math.pow(x - state.startX, 2) + Math.pow(y - state.startY, 2));
             if (moveDist > 5) {
                 state.isDrag = true;
@@ -658,13 +672,10 @@
             }
         }
 
-        function handleEnd() { 
-            state.dragging = null; 
-        }
+        function handleEnd() { state.dragging = null; }
 
         canvas.addEventListener('click', e => {
             if (state.isDrag) return; 
-
             const layout = getLayout();
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
@@ -693,9 +704,7 @@
             }
         });
 
-        function getDist(t1, t2) {
-            return Math.sqrt(Math.pow(t1.clientX - t2.clientX, 2) + Math.pow(t1.clientY - t2.clientY, 2));
-        }
+        function getDist(t1, t2) { return Math.sqrt(Math.pow(t1.clientX - t2.clientX, 2) + Math.pow(t1.clientY - t2.clientY, 2)); }
 
         canvas.addEventListener('mousedown', e => handleStart(e.clientX, e.clientY));
         window.addEventListener('mousemove', e => { if(state.dragging) handleMove(e, e.clientX, e.clientY); });
@@ -718,7 +727,7 @@
                 if (state.initialPinchDist > 0) {
                     const scale = dist / state.initialPinchDist;
                     let newZoom = state.initialZoom * scale;
-                    // 縮放限制恢復為 min 1
+                    // Strict Min Zoom = 1
                     if(newZoom < 1) newZoom = 1; if(newZoom > 3) newZoom = 3;
                     
                     const slider = document.getElementById('zoom-slider');
@@ -798,6 +807,7 @@
     </script>
 </body>
 </html>
+
 
 
 
