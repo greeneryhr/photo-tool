@@ -194,7 +194,7 @@
         <div id="zoom-container" class="zoom-panel">
             <span class="slider-icon" style="color:#2e7d32;">🔍 縮放</span>
             <span class="slider-icon">➖</span>
-            <input type="range" id="zoom-slider" min="1" max="3" step="0.05" value="1">
+            <input type="range" id="zoom-slider" min="0.5" max="3" step="0.05" value="1">
             <span class="slider-icon">➕</span>
         </div>
 
@@ -226,29 +226,21 @@
     </div>
 
     <script>
-        // --- 1. 高畫質 600 DPI ---
         const DPI = 600; 
         const MM_TO_INCH = 0.0393701;
 
-        // 4R 底紙 (10.2cm x 15.2cm)
         const PAPER_4R_W_MM = 102; 
         const PAPER_4R_H_MM = 152;
 
-        // --- 尺寸修正設定 ---
-        // PRINTER_*: 機器印出來的尺寸 (比較大，因為會擴邊)
-        // REAL_*: 我們想要的實際成品尺寸 (標準 2R/3R)
-
-        // 2R 設定
         const PRINTER_2R_W_MM = 66; 
         const PRINTER_2R_H_MM = 92;
         const REAL_2R_W_MM = 63.5;
         const REAL_2R_H_MM = 88.9;
         
-        // 3R 設定 (修正後)
-        const PRINTER_3R_W_MM = 90; // 機器輸出 9cm
-        const PRINTER_3R_H_MM = 129; // 機器輸出 12.9cm
-        const REAL_3R_W_MM = 89; // 標準 3R 8.9cm
-        const REAL_3R_H_MM = 127; // 標準 3R 12.7cm
+        const PRINTER_3R_W_MM = 90; 
+        const PRINTER_3R_H_MM = 129; 
+        const REAL_3R_W_MM = 89; 
+        const REAL_3R_H_MM = 127; 
 
         const PAPER_W = Math.round(PAPER_4R_W_MM * MM_TO_INCH * DPI);
         const PAPER_H = Math.round(PAPER_4R_H_MM * MM_TO_INCH * DPI);
@@ -351,6 +343,7 @@
             highlightGroup(key);
             const layout = getLayout();
             const slot = layout.slots.find(sl => sl.key === key);
+            // 注意：這裡使用 realW/realH 計算，確保縮放是對應標準尺寸
             if(slot) calculateBounds(s, slot.realW, slot.realH);
             draw();
         }
@@ -454,14 +447,13 @@
             draw();
         }
 
-        // --- 核心：尺寸計算 (縮小補償) ---
         function getLayout() {
             const cW = canvas.width;
             const cH = canvas.height;
 
             if (currentSize === '2R') {
                 if (currentOri === 'V') {
-                    // 2R 直向 (左右)
+                    // 2R 直向
                     const slotW = Math.round(PRINTER_2R_W_MM * MM_TO_INCH * DPI); 
                     const slotH = Math.round(PRINTER_2R_H_MM * MM_TO_INCH * DPI);
                     const realW = Math.round(REAL_2R_W_MM * MM_TO_INCH * DPI);
@@ -479,7 +471,7 @@
                         ] 
                     };
                 } else {
-                    // 2R 橫向 (上下)
+                    // 2R 橫向
                     const slotW = Math.round(PRINTER_2R_H_MM * MM_TO_INCH * DPI); 
                     const slotH = Math.round(PRINTER_2R_W_MM * MM_TO_INCH * DPI); 
                     const realW = Math.round(REAL_2R_H_MM * MM_TO_INCH * DPI); 
@@ -498,17 +490,15 @@
                     };
                 }
             } else {
-                // 3R Logic (同樣應用縮小補償)
+                // 3R 縮小補償邏輯
                 let slotW, slotH, realW, realH;
 
                 if (currentOri === 'V') {
-                    // 3R 直向
-                    slotW = Math.round(PRINTER_3R_W_MM * MM_TO_INCH * DPI); // 90mm
-                    slotH = Math.round(PRINTER_3R_H_MM * MM_TO_INCH * DPI); // 129mm
-                    realW = Math.round(REAL_3R_W_MM * MM_TO_INCH * DPI); // 89mm
-                    realH = Math.round(REAL_3R_H_MM * MM_TO_INCH * DPI); // 127mm
+                    slotW = Math.round(PRINTER_3R_W_MM * MM_TO_INCH * DPI); 
+                    slotH = Math.round(PRINTER_3R_H_MM * MM_TO_INCH * DPI); 
+                    realW = Math.round(REAL_3R_W_MM * MM_TO_INCH * DPI); 
+                    realH = Math.round(REAL_3R_H_MM * MM_TO_INCH * DPI); 
                 } else {
-                    // 3R 橫向
                     slotW = Math.round(PRINTER_3R_H_MM * MM_TO_INCH * DPI); 
                     slotH = Math.round(PRINTER_3R_W_MM * MM_TO_INCH * DPI); 
                     realW = Math.round(REAL_3R_H_MM * MM_TO_INCH * DPI); 
@@ -521,17 +511,55 @@
             }
         }
 
+        // --- 關鍵修正：邊界計算邏輯 ---
         function calculateBounds(s, frameW, frameH) {
             const currentW = s.obj.width * s.baseScale * s.zoom;
             const currentH = s.obj.height * s.baseScale * s.zoom;
-            s.minX = frameW - currentW; 
-            s.maxX = 0;
-            s.minY = frameH - currentH;
-            s.maxY = 0;
+            
+            // 正常情況 (zoom >= 1)：圖片必須填滿框
+            // 但現在 zoom 可以 < 1，所以如果圖片比框小，我們要讓它置中
+            
+            if (currentW < frameW) {
+                // 圖片寬度小於框寬度：強制置中
+                s.minX = (frameW - currentW) / 2;
+                s.maxX = s.minX; 
+            } else {
+                // 圖片寬度大於框寬度：限制移動範圍
+                s.minX = frameW - currentW;
+                s.maxX = 0;
+            }
+
+            if (currentH < frameH) {
+                // 圖片高度小於框高度：強制置中
+                s.minY = (frameH - currentH) / 2;
+                s.maxY = s.minY;
+            } else {
+                s.minY = frameH - currentH;
+                s.maxY = 0;
+            }
+
+            // 修正位置 (如果超出範圍，拉回來)
             if (s.x < s.minX) s.x = s.minX;
             if (s.x > s.maxX) s.x = s.maxX;
             if (s.y < s.minY) s.y = s.minY;
             if (s.y > s.maxY) s.y = s.maxY;
+        }
+
+        function initImageState(key) {
+            const s = state[key];
+            const layout = getLayout();
+            const slot = layout.slots.find(slot => slot.key === key);
+            if (!slot) return;
+
+            const imgRatio = s.obj.width / s.obj.height;
+            const frameRatio = slot.realW / slot.realH;
+            s.baseScale = (imgRatio > frameRatio) ? (slot.realH / s.obj.height) : (slot.realW / s.obj.width);
+            s.zoom = 1; 
+            if(state.selectedKey === key) document.getElementById('zoom-slider').value = 1;
+            calculateBounds(s, slot.realW, slot.realH);
+            s.x = (s.minX + s.maxX) / 2; 
+            s.y = (s.minY + s.maxY) / 2;
+            draw();
         }
 
         function draw(isExporting = false) {
@@ -540,14 +568,12 @@
             
             layout.slots.forEach(slot => {
                 const s = state[slot.key];
-                // 關鍵：計算白邊偏移，讓成品圖居中
                 const offsetX = (slot.w - slot.realW) / 2;
                 const offsetY = (slot.h - slot.realH) / 2;
 
                 if (s.loaded) {
                     ctx.save();
                     ctx.beginPath();
-                    // 裁切範圍為標準成品尺寸
                     ctx.rect(slot.x + offsetX, slot.y + offsetY, slot.realW, slot.realH);
                     ctx.clip();
                     const drawW = s.obj.width * s.baseScale * s.zoom;
@@ -569,7 +595,6 @@
                         ctx.save();
                         ctx.fillStyle = '#f0f0f0'; ctx.fillRect(slot.x, slot.y, slot.w, slot.h);
                         
-                        // 畫虛線提示成品範圍
                         ctx.strokeStyle = '#bbb'; ctx.lineWidth = 2; ctx.setLineDash([10,10]);
                         ctx.strokeRect(slot.x + offsetX, slot.y + offsetY, slot.realW, slot.realH);
                         ctx.setLineDash([]);
@@ -595,6 +620,9 @@
 
         // --- 觸控邏輯 ---
         function handleStart(x, y) {
+            // 防止點擊滑桿區域時觸發 Canvas 點擊
+            if (y > canvas.getBoundingClientRect().bottom && document.getElementById('zoom-container').classList.contains('show')) return;
+
             const layout = getLayout();
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
@@ -635,8 +663,12 @@
                 const s = state[state.dragging];
                 const scale = canvas.width / canvas.getBoundingClientRect().width;
                 s.x += dx * scale; s.y += dy * scale;
-                if (s.x > s.maxX) s.x = s.maxX; if (s.x < s.minX) s.x = s.minX;
-                if (s.y > s.maxY) s.y = s.maxY; if (s.y < s.minY) s.y = s.minY;
+                
+                // 使用修正後的 calculateBounds 邏輯 (支援小圖置中)
+                const layout = getLayout();
+                const slot = layout.slots.find(sl => sl.key === state.dragging);
+                if(slot) calculateBounds(s, slot.realW, slot.realH);
+
                 state.lastX = x; state.lastY = y; draw();
             }
         }
@@ -701,7 +733,7 @@
                 if (state.initialPinchDist > 0) {
                     const scale = dist / state.initialPinchDist;
                     let newZoom = state.initialZoom * scale;
-                    if(newZoom < 1) newZoom = 1; if(newZoom > 3) newZoom = 3;
+                    if(newZoom < 0.5) newZoom = 0.5; if(newZoom > 3) newZoom = 3;
                     
                     const slider = document.getElementById('zoom-slider');
                     if(slider) slider.value = newZoom;
@@ -780,3 +812,4 @@
     </script>
 </body>
 </html>
+
