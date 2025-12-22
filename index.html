@@ -194,7 +194,7 @@
         <div id="zoom-container" class="zoom-panel">
             <span class="slider-icon" style="color:#2e7d32;">🔍 縮放</span>
             <span class="slider-icon">➖</span>
-            <input type="range" id="zoom-slider" min="0.5" max="3" step="0.05" value="1">
+            <input type="range" id="zoom-slider" min="1" max="3" step="0.05" value="1">
             <span class="slider-icon">➕</span>
         </div>
 
@@ -343,6 +343,7 @@
             highlightGroup(key);
             const layout = getLayout();
             const slot = layout.slots.find(sl => sl.key === key);
+            // 注意：恢復使用原來的邊界限制
             if(slot) calculateBounds(s, slot.realW, slot.realH);
             draw();
         }
@@ -489,7 +490,7 @@
                     };
                 }
             } else {
-                // 3R 縮小補償邏輯
+                // 3R Logic (同樣應用縮小補償)
                 let slotW, slotH, realW, realH;
 
                 if (currentOri === 'V') {
@@ -510,27 +511,19 @@
             }
         }
 
+        // --- 關鍵修正：邊界計算邏輯 (強制填滿) ---
         function calculateBounds(s, frameW, frameH) {
             const currentW = s.obj.width * s.baseScale * s.zoom;
             const currentH = s.obj.height * s.baseScale * s.zoom;
             
-            // 自動置中邏輯 (當圖片比框小時)
-            if (currentW < frameW) {
-                s.minX = (frameW - currentW) / 2;
-                s.maxX = s.minX; 
-            } else {
-                s.minX = frameW - currentW;
-                s.maxX = 0;
-            }
-
-            if (currentH < frameH) {
-                s.minY = (frameH - currentH) / 2;
-                s.maxY = s.minY;
-            } else {
-                s.minY = frameH - currentH;
-                s.maxY = 0;
-            }
-
+            // 圖片永遠不小於框 (因為 Zoom >= 1)
+            // 限制移動範圍，確保不會露出白邊
+            s.minX = frameW - currentW; 
+            s.maxX = 0;
+            s.minY = frameH - currentH;
+            s.maxY = 0;
+            
+            // 修正位置
             if (s.x < s.minX) s.x = s.minX;
             if (s.x > s.maxX) s.x = s.maxX;
             if (s.y < s.minY) s.y = s.minY;
@@ -566,14 +559,9 @@
                 if (s.loaded) {
                     ctx.save();
                     ctx.beginPath();
+                    // 裁切範圍為標準成品尺寸
                     ctx.rect(slot.x + offsetX, slot.y + offsetY, slot.realW, slot.realH);
                     ctx.clip();
-
-                    // --- 關鍵修改：加入橙色背景 ---
-                    ctx.fillStyle = '#ff9800'; // 橙色
-                    ctx.fillRect(slot.x + offsetX, slot.y + offsetY, slot.realW, slot.realH);
-                    // ---------------------------
-
                     const drawW = s.obj.width * s.baseScale * s.zoom;
                     const drawH = s.obj.height * s.baseScale * s.zoom;
                     ctx.drawImage(s.obj, slot.x + offsetX + s.x, slot.y + offsetY + s.y, drawW, drawH);
@@ -730,8 +718,8 @@
                 if (state.initialPinchDist > 0) {
                     const scale = dist / state.initialPinchDist;
                     let newZoom = state.initialZoom * scale;
-                    // 允許縮小到 0.5
-                    if(newZoom < 0.5) newZoom = 0.5; if(newZoom > 3) newZoom = 3;
+                    // 縮放限制恢復為 min 1
+                    if(newZoom < 1) newZoom = 1; if(newZoom > 3) newZoom = 3;
                     
                     const slider = document.getElementById('zoom-slider');
                     if(slider) slider.value = newZoom;
@@ -810,7 +798,6 @@
     </script>
 </body>
 </html>
-
 
 
 
