@@ -15,7 +15,6 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            /* 視覺優化：更柔和的奶油暖色背景 */
             background-color: #fff8e1;
             display: flex; flex-direction: column; align-items: center;
             padding: 20px 15px; margin: 0; color: #444;
@@ -33,11 +32,10 @@
             letter-spacing: 1px;
         }
         
-        /* --- 膠囊型模式切換 (參考您的圖片風格) --- */
         .mode-switch {
             display: flex; gap: 0;
             background: white; 
-            border-radius: 50px; /* 膠囊形狀 */
+            border-radius: 50px;
             padding: 5px;
             margin-bottom: 15px; width: 100%; max-width: 600px;
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
@@ -51,7 +49,7 @@
 
         .mode-btn {
             flex: 1; padding: 10px 0; text-align: center; cursor: pointer;
-            border-radius: 50px; /* 按鈕也是膠囊 */
+            border-radius: 50px;
             font-weight: 600; color: #888; 
             transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
             font-size: 14px;
@@ -59,16 +57,13 @@
             z-index: 1;
         }
         
-        /* 選中狀態：鮮豔漸層綠 + 陰影 */
         .mode-btn.active {
             color: white; 
-            /* 參考圖片的鮮豔綠色漸層 */
             background: linear-gradient(135deg, #00e676 0%, #00c853 100%);
             box-shadow: 0 4px 12px rgba(0, 200, 83, 0.4);
             font-weight: bold;
         }
 
-        /* 控制面板卡片 */
         .controls {
             background: white; padding: 25px 20px; border-radius: 24px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.06); width: 100%; max-width: 600px;
@@ -79,10 +74,9 @@
         .input-group:last-child { border: none; padding-bottom: 0; margin-bottom: 0; }
         .hidden { display: none !important; }
         
-        /* 高亮時給予柔和綠底 */
         .input-group.active-group { 
             background-color: #f1f8e9; 
-            padding: 15px; margin: -10px -10px 20px -10px; /* 讓高亮區擴大一點 */
+            padding: 15px; margin: -10px -10px 20px -10px;
             border-radius: 16px; border-bottom: none; 
         }
 
@@ -119,19 +113,17 @@
             cursor: pointer; touch-action: pan-y; 
         }
 
-        /* --- 底部控制區 --- */
         .static-footer {
             width: 100%; max-width: 600px;
             display: flex; flex-direction: column; gap: 20px;
             padding: 10px 0 50px 0;
         }
 
-        /* 縮放面板：更圓潤 */
         .zoom-panel {
             display: none; 
             align-items: center; justify-content: center; gap: 15px;
             background: white; border: 1px solid #f0f0f0;
-            padding: 12px 20px; border-radius: 50px; /* 膠囊狀 */
+            padding: 12px 20px; border-radius: 50px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
             animation: fadeIn 0.3s ease;
         }
@@ -145,12 +137,11 @@
         }
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%;
-            background: #00e676; /* 亮綠色滑塊 */
+            background: #00e676;
             cursor: pointer; 
             box-shadow: 0 2px 5px rgba(0, 230, 118, 0.4); border: 2px solid #fff;
         }
 
-        /* 雙按鈕區 */
         .footer-buttons {
             display: flex; gap: 15px; width: 100%;
         }
@@ -163,15 +154,13 @@
             text-shadow: 0 1px 2px rgba(0,0,0,0.1);
         }
 
-        /* 綠色按鈕：系統分享 */
         .btn-share {
             background: linear-gradient(135deg, #66bb6a, #2e7d32);
             box-shadow: 0 6px 15px rgba(46, 125, 50, 0.25);
         }
         
-        /* 藍色按鈕：儲存圖片 (區分顏色) */
         .btn-save {
-            background: linear-gradient(135deg, #42a5f5, #1565c0); /* 海洋藍 */
+            background: linear-gradient(135deg, #42a5f5, #1565c0);
             box-shadow: 0 6px 15px rgba(21, 101, 192, 0.25);
         }
 
@@ -182,7 +171,6 @@
             pointer-events: none; opacity: 0.8;
         }
 
-        /* Modal */
         .modal-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.7); z-index: 1000;
@@ -290,7 +278,9 @@
     </div>
 
     <script>
-        const DPI = 600; 
+        // 修改1: DPI 設為 300，兼顧畫質與 iOS 記憶體相容性
+        const DPI = 300; 
+        
         const MM_TO_INCH = 0.0393701;
 
         const PAPER_4R_W_MM = 102; 
@@ -842,6 +832,7 @@
             }, 100);
         }
 
+        // 修改2: 重寫儲存邏輯，改用 Blob 生成 URL，解決 iOS 長按無法儲存問題
         function doLegacySave() {
             state.selectedKey = null; highlightGroup(null); 
             draw(true); 
@@ -851,10 +842,20 @@
                 const ready = currentSize === '2R' ? (hasImg1 || hasImg2) : hasImg1;
                 if (!ready) { alert("請先上傳照片！"); draw(false); return; }
                 
-                const dataUrl = canvas.toDataURL('image/jpeg', 1.0); 
-                document.getElementById('finalImage').src = dataUrl;
-                document.getElementById('downloadModal').style.display = 'flex';
-                draw(false);
+                canvas.toBlob(function(blob) {
+                    const url = URL.createObjectURL(blob);
+                    const finalImg = document.getElementById('finalImage');
+                    
+                    // 釋放舊的 URL 物件以防記憶體洩漏
+                    if (finalImg.src && finalImg.src.startsWith('blob:')) {
+                        URL.revokeObjectURL(finalImg.src);
+                    }
+
+                    finalImg.src = url;
+                    document.getElementById('downloadModal').style.display = 'flex';
+                    
+                    draw(false);
+                }, 'image/jpeg', 0.95);
             }, 100);
         }
 
@@ -864,6 +865,5 @@
     </script>
 </body>
 </html>
-
 
 
